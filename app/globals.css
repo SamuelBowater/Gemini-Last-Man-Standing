@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0b2818;
+  --bg-deep: #06170e;
+  --panel: #0f3320;
+  --line: rgba(242, 239, 230, 0.14);
+  --line-strong: rgba(242, 239, 230, 0.28);
+  --text: #f2efe6;
+  --text-dim: #9db7a6;
+  --gold: #ffb800;
+  --red: #e4432c;
+  --green-alive: #3ddc84;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-deep: var(--bg-deep);
+  --color-panel: var(--panel);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-text: var(--text);
+  --color-text-dim: var(--text-dim);
+  --color-gold: var(--gold);
+  --color-red: var(--red);
+  --color-green-alive: var(--green-alive);
+  --font-display: var(--font-display);
+  --font-mono: var(--font-mono);
+  --font-sans: var(--font-sans);
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans), sans-serif;
+  background-image: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 60px,
+    rgba(0, 0, 0, 0.08) 60px,
+    rgba(0, 0, 0, 0.08) 120px
+  );
+}
+
+.font-display {
+  font-family: var(--font-display), sans-serif;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.font-mono {
+  font-family: var(--font-mono), monospace;
+}
+
+input::placeholder {
+  color: #5f7a6a;
+}
