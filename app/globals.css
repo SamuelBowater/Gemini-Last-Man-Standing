@@ -1,16 +1,17 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #0b2818;
-  --bg-deep: #06170e;
-  --panel: #0f3320;
-  --line: rgba(242, 239, 230, 0.14);
-  --line-strong: rgba(242, 239, 230, 0.28);
-  --text: #f2efe6;
-  --text-dim: #9db7a6;
-  --gold: #ffb800;
-  --red: #e4432c;
-  --green-alive: #3ddc84;
+  --bg: #f7f9f8;
+  --bg-deep: #eef3f1;
+  --panel: #ffffff;
+  --line: rgba(15, 40, 32, 0.08);
+  --line-strong: rgba(15, 40, 32, 0.16);
+  --text: #10241c;
+  --text-dim: #5b7268;
+  --accent: #0d9488;
+  --accent-soft: #ccfbf1;
+  --red: #e0503b;
+  --green-alive: #16a34a;
 }
 
 @theme inline {
@@ -21,11 +22,12 @@
   --color-line-strong: var(--line-strong);
   --color-text: var(--text);
   --color-text-dim: var(--text-dim);
-  --color-gold: var(--gold);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
   --color-red: var(--red);
   --color-green-alive: var(--green-alive);
   --font-display: var(--font-display);
-  --font-mono: var(--font-mono);
+  --font-mono: var(--font-sans);
   --font-sans: var(--font-sans);
 }
 
@@ -33,25 +35,17 @@ body {
   background-color: var(--bg);
   color: var(--text);
   font-family: var(--font-sans), sans-serif;
-  background-image: repeating-linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.02) 0px,
-    rgba(255, 255, 255, 0.02) 60px,
-    rgba(0, 0, 0, 0.08) 60px,
-    rgba(0, 0, 0, 0.08) 120px
-  );
 }
 
 .font-display {
   font-family: var(--font-display), sans-serif;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
 }
 
 .font-mono {
-  font-family: var(--font-mono), monospace;
+  font-family: var(--font-sans), sans-serif;
 }
 
 input::placeholder {
-  color: #5f7a6a;
+  color: #9fb3ab;
 }

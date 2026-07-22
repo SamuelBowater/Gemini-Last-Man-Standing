@@ -83,7 +83,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
       </Panel>
       <div className="text-center">
-        <Link href="/" className="text-text-dim text-[12px] font-mono hover:text-gold">
+        <Link href="/" className="text-text-dim text-[12px] font-mono hover:text-accent">
           ← Back to the pool
         </Link>
       </div>
@@ -138,10 +138,10 @@ function AdminDashboard() {
         <PanelTitle>Pool status</PanelTitle>
         <div className="flex gap-6 font-mono text-sm text-text-dim">
           <div>
-            Gameweek: <span className="text-gold">{gameState.currentGW}</span>
+            Gameweek: <span className="text-accent">{gameState.currentGW}</span>
           </div>
           <div>
-            Phase: <span className="text-gold">{gameState.phase}</span>
+            Phase: <span className="text-accent">{gameState.phase}</span>
           </div>
         </div>
       </Panel>
@@ -158,7 +158,7 @@ function AdminDashboard() {
       <DangerZone onChange={refresh} />
 
       <div className="text-center mt-8">
-        <Link href="/" className="text-text-dim text-[11px] font-mono hover:text-gold">
+        <Link href="/" className="text-text-dim text-[11px] font-mono hover:text-accent">
           ← Back to the pool
         </Link>
       </div>

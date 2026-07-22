@@ -54,7 +54,7 @@ export default function Home() {
     );
   }
 
-  const { gameState, participants, fixtures, officialFixturesUrl, me } = state;
+  const { gameState, participants, me } = state;
   const alive = participants.filter((p) => p.status !== "eliminated");
   const out = participants
     .filter((p) => p.status === "eliminated")
@@ -81,7 +81,7 @@ export default function Home() {
         </div>
       )}
 
-      <FixturesPanel gameState={gameState} fixtures={fixtures} officialUrl={officialFixturesUrl} />
+      <FixturesPanel currentGW={gameState.currentGW} />
 
       {gameState.phase === "finished" && <WinnerBanner alive={alive} gw={gameState.currentGW} />}
 
@@ -90,7 +90,7 @@ export default function Home() {
           <PanelTitle>No players yet</PanelTitle>
           <Sub>
             The commissioner needs to add players before anyone can log in. Head to{" "}
-            <Link href="/admin" className="text-gold underline">
+            <Link href="/admin" className="text-accent underline">
               /admin
             </Link>{" "}
             to add the group and hand out codes.
@@ -105,7 +105,7 @@ export default function Home() {
       <StandingsPanel alive={alive} out={out} gameState={gameState} myId={me?.id} />
 
       <div className="text-center mt-8">
-        <Link href="/admin" className="text-text-dim text-[11px] font-mono hover:text-gold">
+        <Link href="/admin" className="text-text-dim text-[11px] font-mono hover:text-accent">
           Commissioner login →
         </Link>
       </div>
@@ -128,10 +128,10 @@ function Hero({
 }) {
   return (
     <div className="text-center pb-6 mb-6 border-b border-line">
-      <div className="font-mono text-[12px] tracking-[3px] uppercase text-gold mb-2.5">
+      <div className="font-mono text-[12px] tracking-[3px] uppercase text-accent mb-2.5">
         Premier League Survival Pool
       </div>
-      <h1 className="font-display text-[54px] leading-[0.95] mb-3" style={{ textShadow: "0 0 24px rgba(255,184,0,0.18)" }}>
+      <h1 className="font-display text-[54px] leading-[0.95] mb-3 text-text">
         Gemini&apos;s Last Man
         <br />
         Standing
@@ -147,7 +147,7 @@ function Hero({
           { num: total, label: "Entered" },
         ].map((cell, i) => (
           <div key={i} className={`px-5 py-2.5 text-center ${i < 2 ? "border-r border-line" : ""}`}>
-            <div className="font-mono text-[22px] font-bold text-gold">{cell.num}</div>
+            <div className="font-mono text-[22px] font-bold text-accent">{cell.num}</div>
             <div className="text-[10px] tracking-[1.5px] text-text-dim uppercase mt-0.5">{cell.label}</div>
           </div>
         ))}
@@ -162,9 +162,9 @@ function WinnerBanner({ alive, gw }: { alive: StateResponse["participants"]; gw:
     <div
       className="text-center py-7 px-4 rounded-[10px] mb-5 border"
       style={{
-        borderColor: won ? "var(--gold)" : "var(--red)",
+        borderColor: won ? "var(--accent)" : "var(--red)",
         background: won
-          ? "radial-gradient(circle at center, rgba(255,184,0,0.14), transparent 70%)"
+          ? "radial-gradient(circle at center, rgba(13,148,136,0.12), transparent 70%)"
           : "transparent",
       }}
     >
@@ -224,19 +224,49 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function FixturesPanel({
-  gameState,
-  fixtures,
-  officialUrl,
-}: {
-  gameState: StateResponse["gameState"];
-  fixtures: Fixture[];
-  officialUrl: string;
-}) {
+function FixturesPanel({ currentGW }: { currentGW: number }) {
+  const [selectedGW, setSelectedGW] = useState(currentGW);
+  const [fixtures, setFixtures] = useState<Fixture[]>([]);
+  const [officialUrl, setOfficialUrl] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setSelectedGW(currentGW);
+  }, [currentGW]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    api(`/api/fixtures?gw=${selectedGW}`).then((data) => {
+      if (cancelled) return;
+      setFixtures(data.fixtures);
+      setOfficialUrl(data.officialFixturesUrl);
+      setLoading(false);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedGW]);
+
   return (
     <Panel>
-      <PanelTitle>Fixtures · Gameweek {gameState.currentGW}</PanelTitle>
-      {fixtures.length === 0 ? (
+      <div className="flex justify-between items-center mb-3">
+        <PanelTitle>Fixtures</PanelTitle>
+        <select
+          value={selectedGW}
+          onChange={(e) => setSelectedGW(Number(e.target.value))}
+          className="bg-bg-deep border border-line-strong text-text text-[13px] font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-accent"
+        >
+          {Array.from({ length: 38 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              Gameweek {i + 1}
+            </option>
+          ))}
+        </select>
+      </div>
+      {loading ? (
+        <EmptyNote>Loading fixtures…</EmptyNote>
+      ) : fixtures.length === 0 ? (
         <EmptyNote>
           No fixtures added for this gameweek yet — check back soon, or use the official link
           below.
@@ -244,12 +274,12 @@ function FixturesPanel({
       ) : (
         <div className="flex flex-col gap-2">
           {fixtures.map((f, i) => (
-            <div key={i} className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3">
+            <div key={i} className="flex justify-between items-center bg-bg-deep border border-line rounded-xl px-3.5 py-3">
               <div>
                 <div className="font-semibold">
                   {f.home} <span className="text-text-dim font-normal">v</span> {f.away}
                 </div>
-                <div className="font-mono text-[11.5px] text-text-dim">{formatKickoff(f.kickoff)}</div>
+                <div className="text-[11.5px] text-text-dim">{formatKickoff(f.kickoff)}</div>
               </div>
             </div>
           ))}
@@ -259,7 +289,7 @@ function FixturesPanel({
         href={officialUrl}
         target="_blank"
         rel="noopener"
-        className="inline-block mt-3.5 text-[12.5px] text-gold border-b border-dotted border-gold no-underline"
+        className="inline-block mt-3.5 text-[12.5px] text-accent border-b border-dotted border-accent no-underline"
       >
         Check live scores on premierleague.com ↗
       </a>
@@ -360,12 +390,12 @@ function PickForm({
           const suggestions = SUGGESTED[pos.key].filter((n) => !used.has(n.toLowerCase()));
           return (
             <div key={pos.key} className="px-5 py-[18px] border-b border-line">
-              <div className="font-mono text-[11px] tracking-[2px] text-gold uppercase">{pos.label}</div>
+              <div className="font-mono text-[11px] tracking-[2px] text-accent uppercase">{pos.label}</div>
               <div className="text-text-dim text-[12.5px] my-1 mb-3">{pos.hint}</div>
               <div className="flex items-center gap-3">
                 <div
                   className={`w-[38px] h-[38px] min-w-[38px] rounded-full border-2 flex items-center justify-center font-display text-[15px] ${
-                    values[pos.key] ? "border-gold text-gold" : "border-line-strong text-text-dim"
+                    values[pos.key] ? "border-accent text-accent" : "border-line-strong text-text-dim"
                   }`}
                 >
                   {values[pos.key] ? "✓" : "?"}
@@ -377,7 +407,7 @@ function PickForm({
                     placeholder="Type a player name…"
                     value={values[pos.key]}
                     onChange={(e) => setValues((v) => ({ ...v, [pos.key]: e.target.value }))}
-                    className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#5f7a6a] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-gold"
+                    className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent"
                   />
                   <datalist id={`dl-${pos.key}`}>
                     {suggestions.map((n) => (
@@ -389,7 +419,7 @@ function PickForm({
             </div>
           );
         })}
-        <div className="px-5 py-4 bg-black/20 flex flex-col items-end gap-2">
+        <div className="px-5 py-4 bg-bg-deep flex flex-col items-end gap-2">
           {error && <div className="text-red text-[13px] self-stretch">{error}</div>}
           <PrimaryButton disabled={!filled || busy} onClick={submit}>
             {busy ? "Locking in…" : "Lock in picks"}
