@@ -239,7 +239,7 @@ export default function DemoPage() {
             Demo
           </GhostButton>
           <Link
-            href="/admin"
+            href="/demo/admin"
             className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
           >
             Admin

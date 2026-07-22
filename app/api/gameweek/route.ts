@@ -41,7 +41,13 @@ export const GET = withErrors(async (req: NextRequest) => {
             pk.forward, pk.midfielder, pk.defender
      FROM participants p
      LEFT JOIN picks pk ON pk.participant_id = p.id AND pk.gw = $1
-     ORDER BY (p.status = 'eliminated') ASC, p.name ASC`,
+     ORDER BY
+       CASE
+         WHEN p.eliminated_gw IS NULL OR p.eliminated_gw > $1 THEN 0
+         WHEN p.eliminated_gw = $1 THEN 1
+         ELSE 2
+       END,
+       p.name ASC`,
     [gw]
   );
 
@@ -50,10 +56,15 @@ export const GET = withErrors(async (req: NextRequest) => {
     const forward = resolved ? r.forward : null;
     const midfielder = resolved ? r.midfielder : null;
     const defender = resolved ? r.defender : null;
+    // Status as of THIS gameweek, not the participant's current/final status —
+    // otherwise someone eliminated in a later week would wrongly show as
+    // "Eliminated" when looking back at an earlier week they were still in.
+    const statusAsOfGW: "alive" | "eliminated" =
+      r.eliminatedGW !== null && r.eliminatedGW <= gw ? "eliminated" : "alive";
     return {
       id: r.id,
       name: r.name,
-      overallStatus: r.status,
+      overallStatus: statusAsOfGW,
       submitted: hasPick,
       forward,
       midfielder,

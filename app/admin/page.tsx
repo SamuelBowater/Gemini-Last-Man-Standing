@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, TextInput, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, TextInput, TextArea, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
 import { TEAMS } from "@/lib/data";
 
 function wait(ms: number) {
@@ -511,6 +511,35 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
   const [scorers, setScorers] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [suggestLoading, setSuggestLoading] = useState(false);
+  const [suggestMsg, setSuggestMsg] = useState("");
+
+  const fetchSuggestions = useCallback(async (fillIfEmpty: boolean) => {
+    setSuggestLoading(true);
+    setSuggestMsg("");
+    try {
+      const res = await api("/api/admin/suggested-scorers");
+      if (!res.ok) {
+        setSuggestMsg(res.message || "Couldn't reach the live scorer data.");
+      } else if (res.scorers.length === 0) {
+        setSuggestMsg("No goals recorded yet for this gameweek.");
+      } else {
+        setSuggestMsg(`Suggested ${res.scorers.length} scorer${res.scorers.length === 1 ? "" : "s"} from live data — check before applying.`);
+        if (!fillIfEmpty || scorers.trim().length === 0) {
+          setScorers(res.scorers.join(", "));
+        }
+      }
+    } catch (e) {
+      setSuggestMsg((e as Error).message);
+    }
+    setSuggestLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (gameState.phase !== "finished") fetchSuggestions(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.currentGW]);
 
   if (gameState.phase === "finished") {
     return (
@@ -546,14 +575,26 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
     <Panel>
       <PanelTitle>Results · Gameweek {gameState.currentGW}</PanelTitle>
       <Sub>
-        Type every player who scored this gameweek, comma-separated. Anyone whose all three picks
-        are missing from this list goes out.
+        Scorers are auto-suggested from live match data below — double check the list, then edit
+        or add anyone missing before applying. Anyone whose all three picks are missing from this
+        list goes out.
       </Sub>
-      <TextInput
+      <TextArea
         value={scorers}
         onChange={(e) => setScorers(e.target.value)}
         placeholder="Erling Haaland, Cole Palmer, Virgil van Dijk"
+        rows={5}
       />
+      <div className="flex items-center gap-3 mt-2.5">
+        <button
+          onClick={() => fetchSuggestions(false)}
+          disabled={suggestLoading}
+          className="text-[12px] text-accent hover:underline disabled:opacity-40"
+        >
+          {suggestLoading ? "Checking live data…" : "🔮 Refresh suggestions"}
+        </button>
+        {suggestMsg && <div className="text-[11.5px] text-text-dim">{suggestMsg}</div>}
+      </div>
       <div className="mt-3">
         <PrimaryButton onClick={apply} disabled={busy}>
           {busy ? "Applying…" : `Apply results & advance`}

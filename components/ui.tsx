@@ -60,6 +60,16 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
+export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  const { className = "", ...rest } = props;
+  return (
+    <textarea
+      {...rest}
+      className={`w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-xl px-3.5 py-3 text-[15px] leading-relaxed focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft ${className}`}
+    />
+  );
+}
+
 export function Badge({
   children,
   tone = "pending",
