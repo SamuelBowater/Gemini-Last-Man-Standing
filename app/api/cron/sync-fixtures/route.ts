@@ -18,6 +18,7 @@ interface FDMatch {
   status?: string;
   homeTeam?: { name?: string };
   awayTeam?: { name?: string };
+  score?: { fullTime?: { home?: number | null; away?: number | null } };
 }
 
 export const GET = withErrors(async (req: NextRequest) => {
@@ -75,11 +76,22 @@ export const GET = withErrors(async (req: NextRequest) => {
     if (gw === null || gw === undefined || !home || !away) continue;
 
     await pool.query(
-      `INSERT INTO fixtures (season, gw, home, away, kickoff, venue, status, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'api')
+      `INSERT INTO fixtures (season, gw, home, away, kickoff, venue, status, home_score, away_score, source)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'api')
        ON CONFLICT (season, gw, home, away)
-       DO UPDATE SET kickoff = EXCLUDED.kickoff, venue = EXCLUDED.venue, status = EXCLUDED.status, source = 'api'`,
-      [gs.season, gw, home, away, match.utcDate || null, match.venue || null, match.status || null]
+       DO UPDATE SET kickoff = EXCLUDED.kickoff, venue = EXCLUDED.venue, status = EXCLUDED.status,
+         home_score = EXCLUDED.home_score, away_score = EXCLUDED.away_score, source = 'api'`,
+      [
+        gs.season,
+        gw,
+        home,
+        away,
+        match.utcDate || null,
+        match.venue || null,
+        match.status || null,
+        match.score?.fullTime?.home ?? null,
+        match.score?.fullTime?.away ?? null,
+      ]
     );
     count++;
   }

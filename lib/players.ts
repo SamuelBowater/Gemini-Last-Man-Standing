@@ -99,3 +99,17 @@ export async function fetchFplPlayers(): Promise<SyncedPlayer[]> {
   }
   return players;
 }
+
+/** fplId -> goals scored that gameweek (only entries with at least 1 goal). Free, no key needed. */
+export async function fetchGameweekScorers(gw: number): Promise<Map<number, number>> {
+  const resp = await fetch(`https://fantasy.premierleague.com/api/event/${gw}/live/`, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+  });
+  if (!resp.ok) return new Map();
+  const data: { elements: { id: number; stats: { goals_scored: number } }[] } = await resp.json();
+  const scorers = new Map<number, number>();
+  for (const el of data.elements) {
+    if (el.stats.goals_scored > 0) scorers.set(el.id, el.stats.goals_scored);
+  }
+  return scorers;
+}

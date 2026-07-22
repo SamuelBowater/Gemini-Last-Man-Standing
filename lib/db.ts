@@ -92,9 +92,13 @@ export function ensureSchema(): Promise<void> {
         kickoff TIMESTAMPTZ,
         venue TEXT,
         status TEXT,
+        home_score INTEGER,
+        away_score INTEGER,
         source TEXT NOT NULL DEFAULT 'manual',
         UNIQUE (season, gw, home, away)
       );
+      ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS home_score INTEGER;
+      ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS away_score INTEGER;
 
       CREATE TABLE IF NOT EXISTS sync_meta (
         id INTEGER PRIMARY KEY DEFAULT 1,

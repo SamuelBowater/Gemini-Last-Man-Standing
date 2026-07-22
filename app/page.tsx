@@ -45,6 +45,27 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function fixtureStatusLabel(status: string | null | undefined): string | null {
+  switch (status) {
+    case "FINISHED":
+      return "FT";
+    case "IN_PLAY":
+      return "Live";
+    case "PAUSED":
+      return "HT";
+    case "SUSPENDED":
+      return "Suspended";
+    case "POSTPONED":
+      return "Postponed";
+    case "CANCELLED":
+      return "Cancelled";
+    case "AWARDED":
+      return "Awarded";
+    default:
+      return null;
+  }
+}
+
 function formatKickoff(kickoff: string | null) {
   if (!kickoff) return "Kick-off TBC";
   return new Date(kickoff).toLocaleString(undefined, {
@@ -321,6 +342,46 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
+function FixtureStatusLine({ fixture }: { fixture: Fixture }) {
+  const label = fixtureStatusLabel(fixture.status);
+  const hasScore =
+    fixture.homeScore !== null &&
+    fixture.homeScore !== undefined &&
+    fixture.awayScore !== null &&
+    fixture.awayScore !== undefined;
+
+  if (hasScore) {
+    return (
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[13px] font-bold text-text">
+            {fixture.homeScore} - {fixture.awayScore}
+          </span>
+          {label && (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-accent">{label}</span>
+          )}
+        </div>
+        {((fixture.homeScorers?.length ?? 0) > 0 || (fixture.awayScorers?.length ?? 0) > 0) && (
+          <div className="text-[11px] text-text-dim mt-1 flex flex-col gap-0.5">
+            {fixture.homeScorers && fixture.homeScorers.length > 0 && (
+              <div>⚽ {fixture.homeScorers.join(", ")}</div>
+            )}
+            {fixture.awayScorers && fixture.awayScorers.length > 0 && (
+              <div>⚽ {fixture.awayScorers.join(", ")}</div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (label) {
+    return <div className="text-[11.5px] text-red">{label}</div>;
+  }
+
+  return <div className="text-[11.5px] text-text-dim">{formatKickoff(fixture.kickoff)}</div>;
+}
+
 function FixturesPanel({ currentGW, players }: { currentGW: number; players: LivePlayer[] }) {
   const [selectedGW, setSelectedGW] = useState(currentGW);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
@@ -389,7 +450,7 @@ function FixturesPanel({ currentGW, players }: { currentGW: number; players: Liv
                     <div className="font-semibold">
                       {f.home} <span className="text-text-dim font-normal">v</span> {f.away}
                     </div>
-                    <div className="text-[11.5px] text-text-dim">{formatKickoff(f.kickoff)}</div>
+                    <FixtureStatusLine fixture={f} />
                   </div>
                   <span className="text-accent text-[11px] font-semibold whitespace-nowrap">
                     {isOpen ? "Hide threats ▲" : "Key threats ▾"}

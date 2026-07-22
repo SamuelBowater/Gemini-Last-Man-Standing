@@ -35,6 +35,10 @@ export interface Fixture {
   kickoff: string | null;
   venue?: string | null;
   status?: string | null;
+  homeScore?: number | null;
+  awayScore?: number | null;
+  homeScorers?: string[];
+  awayScorers?: string[];
   source?: string;
 }
 
