@@ -103,6 +103,26 @@ export function ensureSchema(): Promise<void> {
         CONSTRAINT single_row CHECK (id = 1)
       );
       INSERT INTO sync_meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS players (
+        fpl_id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        team TEXT NOT NULL,
+        position TEXT NOT NULL,
+        status TEXT NOT NULL,
+        news TEXT NOT NULL DEFAULT '',
+        chance_of_playing INTEGER,
+        threat NUMERIC NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS player_sync_meta (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        last_synced_at TIMESTAMPTZ,
+        last_error TEXT,
+        CONSTRAINT single_row_players CHECK (id = 1)
+      );
+      INSERT INTO player_sync_meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
     `)
       .then(() => undefined)
       .catch((err) => {

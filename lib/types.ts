@@ -1,4 +1,17 @@
+import type { PositionKey } from "@/lib/data";
+import type { PlayerStatus } from "@/lib/players";
+
 export type Phase = "picking" | "finished";
+
+export interface LivePlayer {
+  name: string;
+  team: string;
+  position: PositionKey;
+  status: PlayerStatus;
+  news: string;
+  chanceOfPlaying: number | null;
+  threat: number;
+}
 
 export interface GameState {
   currentGW: number;

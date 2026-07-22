@@ -2,9 +2,34 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Badge, EmptyNote } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
 import { POSITIONS, SUGGESTED, PositionKey } from "@/lib/data";
-import type { StateResponse, Fixture } from "@/lib/types";
+import { STATUS_LABEL, normalizeTeamName, type PlayerStatus } from "@/lib/players";
+import type { StateResponse, Fixture, LivePlayer } from "@/lib/types";
+
+const POSITION_SHORT: Record<PositionKey, string> = {
+  forward: "FWD",
+  midfielder: "MID",
+  defender: "DEF",
+};
+
+function StatusPill({ status }: { status: PlayerStatus }) {
+  if (status === "available") return null;
+  const tones: Record<PlayerStatus, string> = {
+    available: "",
+    doubtful: "text-[#b45309] border-[#b45309]/30 bg-[#b45309]/10",
+    injured: "text-red border-red/30 bg-red/10",
+    suspended: "text-red border-red/30 bg-red/10",
+    unavailable: "text-text-dim border-line-strong bg-bg-deep",
+  };
+  return (
+    <span
+      className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border whitespace-nowrap ${tones[status]}`}
+    >
+      {STATUS_LABEL[status]}
+    </span>
+  );
+}
 
 async function api(path: string, opts?: RequestInit) {
   const res = await fetch(path, {
@@ -14,6 +39,10 @@ async function api(path: string, opts?: RequestInit) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Something went wrong.");
   return data;
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function formatKickoff(kickoff: string | null) {
@@ -29,6 +58,7 @@ function formatKickoff(kickoff: string | null) {
 
 export default function Home() {
   const [state, setState] = useState<StateResponse | null>(null);
+  const [players, setPlayers] = useState<LivePlayer[]>([]);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
@@ -37,13 +67,18 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    const loadPlayers = api("/api/players")
+      .then((d) => setPlayers(d.players))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
-    refresh().finally(() => setLoading(false));
+    Promise.all([refresh(), loadPlayers, wait(5000)]).finally(() => setLoading(false));
   }, [refresh]);
 
   if (loading) {
     return (
-      <div className="max-w-[760px] mx-auto px-4 py-10 text-text-dim text-sm">Loading…</div>
+      <div className="max-w-[760px] mx-auto px-4">
+        <LoadingScreen label="Fetching this gameweek's picks…" />
+      </div>
     );
   }
   if (!state) {
@@ -81,7 +116,7 @@ export default function Home() {
         </div>
       )}
 
-      <FixturesPanel currentGW={gameState.currentGW} />
+      <FixturesPanel currentGW={gameState.currentGW} players={players} />
 
       {gameState.phase === "finished" && <WinnerBanner alive={alive} gw={gameState.currentGW} />}
 
@@ -100,7 +135,9 @@ export default function Home() {
 
       {!me && participants.length > 0 && <LoginPanel onSuccess={refresh} />}
 
-      {me && gameState.phase !== "finished" && <PickZone me={me} gameState={gameState} onDone={refresh} />}
+      {me && gameState.phase !== "finished" && (
+        <PickZone me={me} gameState={gameState} players={players} onDone={refresh} />
+      )}
 
       <StandingsPanel alive={alive} out={out} gameState={gameState} myId={me?.id} />
 
@@ -224,11 +261,12 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function FixturesPanel({ currentGW }: { currentGW: number }) {
+function FixturesPanel({ currentGW, players }: { currentGW: number; players: LivePlayer[] }) {
   const [selectedGW, setSelectedGW] = useState(currentGW);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
   const [officialUrl, setOfficialUrl] = useState("");
   const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState<number | null>(null);
 
   useEffect(() => {
     setSelectedGW(currentGW);
@@ -237,6 +275,7 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setExpanded(null);
     api(`/api/fixtures?gw=${selectedGW}`).then((data) => {
       if (cancelled) return;
       setFixtures(data.fixtures);
@@ -273,16 +312,38 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
         </EmptyNote>
       ) : (
         <div className="flex flex-col gap-2">
-          {fixtures.map((f, i) => (
-            <div key={i} className="flex justify-between items-center bg-bg-deep border border-line rounded-xl px-3.5 py-3">
-              <div>
-                <div className="font-semibold">
-                  {f.home} <span className="text-text-dim font-normal">v</span> {f.away}
-                </div>
-                <div className="text-[11.5px] text-text-dim">{formatKickoff(f.kickoff)}</div>
+          {fixtures.map((f, i) => {
+            const homeTeam = normalizeTeamName(f.home);
+            const awayTeam = normalizeTeamName(f.away);
+            const homeThreats = topThreatPerPosition(players, homeTeam);
+            const awayThreats = topThreatPerPosition(players, awayTeam);
+            const isOpen = expanded === i;
+            return (
+              <div key={i} className="bg-bg-deep border border-line rounded-xl px-3.5 py-3">
+                <button
+                  type="button"
+                  onClick={() => setExpanded(isOpen ? null : i)}
+                  className="w-full flex justify-between items-center gap-3 text-left"
+                >
+                  <div>
+                    <div className="font-semibold">
+                      {f.home} <span className="text-text-dim font-normal">v</span> {f.away}
+                    </div>
+                    <div className="text-[11.5px] text-text-dim">{formatKickoff(f.kickoff)}</div>
+                  </div>
+                  <span className="text-accent text-[11px] font-semibold whitespace-nowrap">
+                    {isOpen ? "Hide threats ▲" : "Key threats ▾"}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-line">
+                    <ThreatList label={f.home} players={homeThreats} />
+                    <ThreatList label={f.away} players={awayThreats} />
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
       <a
@@ -297,13 +358,46 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
   );
 }
 
+function topThreatPerPosition(players: LivePlayer[], team: string): LivePlayer[] {
+  const teamPlayers = players.filter((p) => p.team === team);
+  return POSITIONS.map((pos) =>
+    teamPlayers
+      .filter((p) => p.position === pos.key)
+      .sort((a, b) => b.threat - a.threat)[0]
+  ).filter((p): p is LivePlayer => Boolean(p));
+}
+
+function ThreatList({ label, players }: { label: string; players: LivePlayer[] }) {
+  return (
+    <div>
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-text-dim mb-1.5">{label}</div>
+      {players.length === 0 ? (
+        <div className="text-[12px] text-text-dim">No player data yet.</div>
+      ) : (
+        <div className="flex flex-col gap-1.5">
+          {players.map((p) => (
+            <div key={p.name} className="flex items-center justify-between gap-2 text-[12.5px]">
+              <span className="truncate">
+                {p.name} <span className="text-text-dim">· {POSITION_SHORT[p.position]}</span>
+              </span>
+              <StatusPill status={p.status} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PickZone({
   me,
   gameState,
+  players,
   onDone,
 }: {
   me: NonNullable<StateResponse["me"]>;
   gameState: StateResponse["gameState"];
+  players: LivePlayer[];
   onDone: () => void;
 }) {
   if (me.status === "eliminated") {
@@ -344,16 +438,70 @@ function PickZone({
     );
   }
 
-  return <PickForm me={me} gameState={gameState} onDone={onDone} />;
+  return <PickForm me={me} gameState={gameState} players={players} onDone={onDone} />;
+}
+
+function PlayerPicker({
+  value,
+  onChange,
+  candidates,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  candidates: LivePlayer[];
+}) {
+  const [open, setOpen] = useState(false);
+  const query = value.trim().toLowerCase();
+  const filtered = (
+    query ? candidates.filter((p) => p.name.toLowerCase().includes(query)) : candidates
+  ).slice(0, 8);
+
+  return (
+    <div className="relative">
+      <input
+        autoComplete="off"
+        placeholder="Type a player name…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full bg-panel border border-line-strong rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          {filtered.map((p) => (
+            <button
+              key={p.name}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(p.name);
+                setOpen(false);
+              }}
+              className="w-full flex justify-between items-center gap-2 px-3.5 py-2.5 text-left hover:bg-bg-deep transition"
+            >
+              <span className="truncate">
+                <span className="font-medium">{p.name}</span>
+                {p.team && <span className="text-text-dim text-[12px]"> · {p.team}</span>}
+              </span>
+              <StatusPill status={p.status} />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function PickForm({
   me,
   gameState,
+  players,
   onDone,
 }: {
   me: NonNullable<StateResponse["me"]>;
   gameState: StateResponse["gameState"];
+  players: LivePlayer[];
   onDone: () => void;
 }) {
   const [values, setValues] = useState<Record<PositionKey, string>>({
@@ -387,7 +535,23 @@ function PickForm({
       </div>
       <div className="bg-bg-deep">
         {POSITIONS.map((pos) => {
-          const suggestions = SUGGESTED[pos.key].filter((n) => !used.has(n.toLowerCase()));
+          const live = players.filter((p) => p.position === pos.key && !used.has(p.name.toLowerCase()));
+          const candidates =
+            live.length > 0
+              ? [...live].sort((a, b) => b.threat - a.threat)
+              : SUGGESTED[pos.key]
+                  .filter((n) => !used.has(n.toLowerCase()))
+                  .map(
+                    (name): LivePlayer => ({
+                      name,
+                      team: "",
+                      position: pos.key,
+                      status: "available",
+                      news: "",
+                      chanceOfPlaying: null,
+                      threat: 0,
+                    })
+                  );
           return (
             <div key={pos.key} className="px-5 py-[18px] border-b border-line">
               <div className="font-mono text-[11px] tracking-[2px] text-accent uppercase">{pos.label}</div>
@@ -401,19 +565,11 @@ function PickForm({
                   {values[pos.key] ? "✓" : "?"}
                 </div>
                 <div className="flex-1">
-                  <input
-                    list={`dl-${pos.key}`}
-                    autoComplete="off"
-                    placeholder="Type a player name…"
+                  <PlayerPicker
                     value={values[pos.key]}
-                    onChange={(e) => setValues((v) => ({ ...v, [pos.key]: e.target.value }))}
-                    className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent"
+                    onChange={(v) => setValues((old) => ({ ...old, [pos.key]: v }))}
+                    candidates={candidates}
                   />
-                  <datalist id={`dl-${pos.key}`}>
-                    {suggestions.map((n) => (
-                      <option value={n} key={n} />
-                    ))}
-                  </datalist>
                 </div>
               </div>
             </div>

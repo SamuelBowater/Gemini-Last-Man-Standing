@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/sync-fixtures",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/sync-players",
+      "schedule": "0 0 * * *"
     }
   ]
 }

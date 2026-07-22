@@ -2,8 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, TextInput, Badge, EmptyNote } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, TextInput, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
 import { TEAMS } from "@/lib/data";
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function api(path: string, opts?: RequestInit) {
   const res = await fetch(path, {
@@ -34,11 +38,15 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    api("/api/admin/me").then((d) => setAuthed(d.isAdmin));
+    Promise.all([api("/api/admin/me"), wait(5000)]).then(([d]) => setAuthed(d.isAdmin));
   }, []);
 
   if (authed === null) {
-    return <div className="max-w-[640px] mx-auto px-4 py-10 text-text-dim text-sm">Loading…</div>;
+    return (
+      <div className="max-w-[640px] mx-auto px-4">
+        <LoadingScreen label="Checking your credentials…" />
+      </div>
+    );
   }
   if (!authed) {
     return <AdminLogin onSuccess={() => setAuthed(true)} />;
@@ -114,10 +122,22 @@ function AdminDashboard() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
-    refresh();
-  }, [refresh]);
+    Promise.all([refresh(), wait(5000)]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (!gameState) return <div className="max-w-[640px] mx-auto px-4 py-10 text-text-dim text-sm">Loading…</div>;
+  useEffect(() => {
+    if (gameState) refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGW]);
+
+  if (!gameState) {
+    return (
+      <div className="max-w-[640px] mx-auto px-4">
+        <LoadingScreen label="Loading the commissioner dashboard…" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-[640px] mx-auto px-4 pb-24 pt-8">
@@ -148,6 +168,7 @@ function AdminDashboard() {
 
       <PlayersPanel players={players} onChange={refresh} />
       <FixturesSourcePanel gameState={gameState} syncStatus={syncStatus} onChange={refresh} />
+      <PlayerDataPanel />
       <ManualFixturesPanel
     fixtures={fixtures}
     selectedGW={selectedGW}
@@ -315,6 +336,59 @@ function FixturesSourcePanel({
           {msg}
         </pre>
       )}
+      {syncStatus && (
+        <div className="text-[11.5px] text-text-dim font-mono mt-3">
+          {syncStatus.lastSyncedAt
+            ? `Last synced ${new Date(syncStatus.lastSyncedAt).toLocaleString()}`
+            : "Never synced yet."}
+          {syncStatus.lastError && <div className="text-red mt-1">Last error: {syncStatus.lastError}</div>}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function PlayerDataPanel() {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [syncStatus, setSyncStatus] = useState<{ lastSyncedAt: string | null; lastError: string | null } | null>(
+    null
+  );
+
+  const loadStatus = useCallback(async () => {
+    const res = await api("/api/admin/player-sync-status");
+    setSyncStatus(res);
+  }, []);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
+
+  async function syncNow() {
+    setBusy(true);
+    setMsg("Syncing…");
+    try {
+      const res = await api("/api/cron/sync-players");
+      setMsg(res.ok ? `Synced ${res.playersSynced} players.` : res.message);
+      await loadStatus();
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <Panel>
+      <PanelTitle>Player data (injuries &amp; threats)</PanelTitle>
+      <Sub>
+        Pulls every outfield player&apos;s club, status (available / doubtful / injured /
+        suspended) and attacking threat rating from the Fantasy Premier League API. Powers the
+        injury flags in the pick form and the &quot;key threats&quot; dropdown on each fixture.
+      </Sub>
+      <GhostButton onClick={syncNow} disabled={busy}>
+        Sync player data now
+      </GhostButton>
+      {msg && <div className="text-[13px] text-text-dim mt-2.5">{msg}</div>}
       {syncStatus && (
         <div className="text-[11.5px] text-text-dim font-mono mt-3">
           {syncStatus.lastSyncedAt

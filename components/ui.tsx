@@ -85,3 +85,17 @@ export function Badge({
 export function EmptyNote({ children }: { children: ReactNode }) {
   return <div className="text-text-dim text-[13.5px] text-center py-2.5">{children}</div>;
 }
+
+export function LoadingScreen({ label = "One sec…" }: { label?: string }) {
+  return (
+    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center">
+      <div className="relative w-16 h-16">
+        <div className="absolute inset-0 rounded-full border-4 border-accent-soft" />
+        <div className="absolute inset-0 rounded-full border-4 border-accent border-t-transparent animate-spin" />
+        <div className="absolute inset-0 flex items-center justify-center text-2xl">⚽</div>
+      </div>
+      <div className="font-display text-lg text-text">Gemini&apos;s Last Man Standing</div>
+      <div className="text-text-dim text-[13px]">{label}</div>
+    </div>
+  );
+}
