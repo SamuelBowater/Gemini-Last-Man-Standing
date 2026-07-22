@@ -111,7 +111,7 @@ export default function Home() {
       </div>
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
-        LAST MAN STANDING · one net, three shots, no excuses
+        GEMINI'S LAST MAN STANDING · one net, three shots, no excuses
       </footer>
     </div>
   );
@@ -132,7 +132,7 @@ function Hero({
         Premier League Survival Pool
       </div>
       <h1 className="font-display text-[54px] leading-[0.95] mb-3" style={{ textShadow: "0 0 24px rgba(255,184,0,0.18)" }}>
-        Last Man
+        Gemini&apos;s Last Man
         <br />
         Standing
       </h1>
