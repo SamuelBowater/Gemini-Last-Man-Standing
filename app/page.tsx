@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { POSITIONS, SUGGESTED, PositionKey } from "@/lib/data";
 import { STATUS_LABEL, normalizeTeamName, type PlayerStatus } from "@/lib/players";
-import type { StateResponse, Fixture, LivePlayer } from "@/lib/types";
+import type { StateResponse, Fixture, LivePlayer, PickHistoryEntry } from "@/lib/types";
 
 const POSITION_SHORT: Record<PositionKey, string> = {
   forward: "FWD",
@@ -92,9 +92,6 @@ export default function Home() {
 
   const { gameState, participants, me } = state;
   const alive = participants.filter((p) => p.status !== "eliminated");
-  const out = participants
-    .filter((p) => p.status === "eliminated")
-    .sort((a, b) => (b.eliminatedGW || 0) - (a.eliminatedGW || 0));
 
   return (
     <div className="max-w-[760px] mx-auto px-4 pb-24 pt-7">
@@ -149,7 +146,7 @@ export default function Home() {
         <PickZone me={me} gameState={gameState} players={players} onDone={refresh} />
       )}
 
-      <StandingsPanel alive={alive} out={out} gameState={gameState} myId={me?.id} />
+      {me && <PickHistoryPanel history={me.history} />}
 
       <div className="text-center mt-8">
         <Link href="/admin" className="text-text-dim text-[11px] font-mono hover:text-accent">
@@ -201,9 +198,17 @@ function Hero({
           </div>
         ))}
       </div>
-      <GhostButton onClick={onHowItWorks} className="mt-5 px-4 py-2 text-[13px]">
-        How it works
-      </GhostButton>
+      <div className="flex justify-center gap-2.5 mt-5">
+        <GhostButton onClick={onHowItWorks} className="px-4 py-2 text-[13px]">
+          How it works
+        </GhostButton>
+        <Link
+          href="/standings"
+          className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
+        >
+          Standings
+        </Link>
+      </div>
     </div>
   );
 }
@@ -471,29 +476,94 @@ function PickZone({
     );
   }
 
-  if (me.pick) {
+  const locked = gameState.pickDeadline
+    ? Date.now() >= new Date(gameState.pickDeadline).getTime()
+    : false;
+
+  if (locked) {
+    if (me.pick) {
+      return (
+        <Panel>
+          <PanelTitle>Picks locked — GW{gameState.currentGW}</PanelTitle>
+          <div className="flex gap-2 flex-wrap">
+            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+              FWD · {me.pick.forward}
+            </span>
+            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+              MID · {me.pick.midfielder}
+            </span>
+            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+              DEF · {me.pick.defender}
+            </span>
+          </div>
+          <Sub>
+            <span className="block mt-3.5">Waiting on the commissioner to log this gameweek&apos;s results.</span>
+          </Sub>
+        </Panel>
+      );
+    }
     return (
       <Panel>
         <PanelTitle>Picks locked — GW{gameState.currentGW}</PanelTitle>
-        <div className="flex gap-2 flex-wrap">
-          <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-            FWD · {me.pick.forward}
-          </span>
-          <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-            MID · {me.pick.midfielder}
-          </span>
-          <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-            DEF · {me.pick.defender}
-          </span>
-        </div>
         <Sub>
-          <span className="block mt-3.5">Waiting on the commissioner to log this gameweek&apos;s results.</span>
+          You didn&apos;t lock in a pick before kickoff this gameweek. Hang tight for results.
         </Sub>
       </Panel>
     );
   }
 
   return <PickForm me={me} gameState={gameState} players={players} onDone={onDone} />;
+}
+
+function PickHistoryPanel({ history }: { history: PickHistoryEntry[] }) {
+  return (
+    <Panel>
+      <PanelTitle>Your picks so far</PanelTitle>
+      {history.length === 0 ? (
+        <EmptyNote>No previous picks to show just yet.</EmptyNote>
+      ) : (
+        <div className="flex flex-col gap-2">
+          {[...history].reverse().map((h) => (
+            <div key={h.gw} className="bg-bg-deep border border-line rounded-xl px-3.5 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-text-dim mb-1.5">
+                Gameweek {h.gw}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <HistoryChip label="FWD" name={h.forward} scored={h.forwardScored} />
+                <HistoryChip label="MID" name={h.midfielder} scored={h.midfielderScored} />
+                <HistoryChip label="DEF" name={h.defender} scored={h.defenderScored} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function HistoryChip({
+  label,
+  name,
+  scored,
+}: {
+  label: string;
+  name: string;
+  scored: boolean | null;
+}) {
+  return (
+    <span
+      className={`text-[12px] px-2.5 py-1.5 rounded-md border ${
+        scored
+          ? "bg-green-alive/10 border-green-alive/30 text-green-alive"
+          : scored === false
+            ? "bg-bg-deep border-line text-text-dim"
+            : "bg-bg-deep border-line text-text"
+      }`}
+    >
+      {label} · {name}
+      {scored ? " ⚽" : ""}
+    </span>
+  );
 }
 
 function PlayerPicker({
@@ -560,9 +630,9 @@ function PickForm({
   onDone: () => void;
 }) {
   const [values, setValues] = useState<Record<PositionKey, string>>({
-    forward: "",
-    midfielder: "",
-    defender: "",
+    forward: me.pick?.forward || "",
+    midfielder: me.pick?.midfielder || "",
+    defender: me.pick?.defender || "",
   });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -586,7 +656,14 @@ function PickForm({
     <div className="bg-panel border border-line rounded-[10px] overflow-hidden mb-5">
       <div className="px-5 pt-5">
         <PanelTitle>Your picks — Gameweek {gameState.currentGW}</PanelTitle>
-        <Sub>Each player can only be picked once all season. Choose carefully.</Sub>
+        <Sub>
+          Each player can only be picked once all season. Choose carefully.
+          {gameState.pickDeadline && (
+            <span className="block mt-1">
+              You can change your picks until {formatKickoff(gameState.pickDeadline)}.
+            </span>
+          )}
+        </Sub>
       </div>
       <div className="bg-bg-deep">
         {POSITIONS.map((pos) => {
@@ -633,7 +710,7 @@ function PickForm({
         <div className="px-5 py-4 bg-bg-deep flex flex-col items-end gap-2">
           {error && <div className="text-red text-[13px] self-stretch">{error}</div>}
           <PrimaryButton disabled={!filled || busy} onClick={submit}>
-            {busy ? "Locking in…" : "Lock in picks"}
+            {busy ? "Saving…" : me.pick ? "Update picks" : "Lock in picks"}
           </PrimaryButton>
         </div>
       </div>
@@ -641,46 +718,3 @@ function PickForm({
   );
 }
 
-function StandingsPanel({
-  alive,
-  out,
-  gameState,
-  myId,
-}: {
-  alive: StateResponse["participants"];
-  out: StateResponse["participants"];
-  gameState: StateResponse["gameState"];
-  myId?: number;
-}) {
-  if (alive.length === 0 && out.length === 0) return null;
-  return (
-    <Panel>
-      <PanelTitle>Standings</PanelTitle>
-      <div className="flex flex-col gap-2">
-        {alive.map((p) => (
-          <div key={p.id} className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3">
-            <div>
-              <div className="font-semibold">
-                {p.name}
-                {p.id === myId && <span className="text-text-dim font-normal"> (you)</span>}
-              </div>
-              <div className="font-mono text-[11.5px] text-text-dim">
-                Survived {gameState.currentGW - 1} gameweek{gameState.currentGW - 1 === 1 ? "" : "s"}
-              </div>
-            </div>
-            <Badge tone={p.submitted ? "alive" : "pending"}>{p.submitted ? "Alive" : "No pick yet"}</Badge>
-          </div>
-        ))}
-        {out.map((p) => (
-          <div key={p.id} className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 opacity-[0.55]">
-            <div>
-              <div className="font-semibold">{p.name}</div>
-              <div className="font-mono text-[11.5px] text-text-dim">Out in gameweek {p.eliminatedGW}</div>
-            </div>
-            <Badge tone="out">Eliminated</Badge>
-          </div>
-        ))}
-      </div>
-    </Panel>
-  );
-}

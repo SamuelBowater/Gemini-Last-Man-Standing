@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { getCurrentParticipantId } from "@/lib/session";
-import { officialFixturesUrl } from "@/lib/game";
+import { officialFixturesUrl, computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
 
 export const GET = withErrors(async () => {
@@ -41,22 +41,54 @@ export const GET = withErrors(async () => {
         [gs.current_gw, participantId]
       );
       const { rows: usedRows } = await pool.query(
-        `SELECT forward, midfielder, defender FROM picks WHERE participant_id = $1`,
-        [participantId]
+        `SELECT forward, midfielder, defender FROM picks WHERE participant_id = $1 AND gw != $2`,
+        [participantId, gs.current_gw]
       );
       const usedPlayers = Array.from(
         new Set(usedRows.flatMap((r) => [r.forward, r.midfielder, r.defender]).map((n) => n.toLowerCase()))
       );
+
+      const { rows: historyRows } = await pool.query(
+        `SELECT pk.gw, pk.forward, pk.midfielder, pk.defender, r.scorers
+         FROM picks pk
+         LEFT JOIN results r ON r.gw = pk.gw
+         WHERE pk.participant_id = $1 AND pk.gw < $2
+         ORDER BY pk.gw ASC`,
+        [participantId, gs.current_gw]
+      );
+      const history = historyRows.map((r) => {
+        const scorerSet = new Set<string>((r.scorers || []).map((s: string) => s.toLowerCase()));
+        const resolved = r.scorers !== null;
+        return {
+          gw: r.gw,
+          forward: r.forward,
+          midfielder: r.midfielder,
+          defender: r.defender,
+          resolved,
+          forwardScored: resolved ? scorerSet.has(r.forward.toLowerCase()) : null,
+          midfielderScored: resolved ? scorerSet.has(r.midfielder.toLowerCase()) : null,
+          defenderScored: resolved ? scorerSet.has(r.defender.toLowerCase()) : null,
+        };
+      });
+
       me = {
         ...meRows[0],
         pick: pickRows[0] || null,
         usedPlayers,
+        history,
       };
     }
   }
 
+  const pickDeadline = computePickDeadline(fixtures.map((f) => f.kickoff));
+
   return NextResponse.json({
-    gameState: { currentGW: gs.current_gw, phase: gs.phase, season: gs.season },
+    gameState: {
+      currentGW: gs.current_gw,
+      phase: gs.phase,
+      season: gs.season,
+      pickDeadline,
+    },
     participants: participants.map((p) => ({ ...p, submitted: submittedSet.has(p.id) })),
     fixtures,
     officialFixturesUrl: officialFixturesUrl(gs.season, gs.current_gw),

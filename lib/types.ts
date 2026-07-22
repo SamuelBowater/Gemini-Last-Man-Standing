@@ -17,6 +17,7 @@ export interface GameState {
   currentGW: number;
   phase: Phase;
   season: string;
+  pickDeadline: string | null;
 }
 
 export interface Participant {
@@ -43,9 +44,21 @@ export interface Pick {
   defender: string;
 }
 
+export interface PickHistoryEntry {
+  gw: number;
+  forward: string;
+  midfielder: string;
+  defender: string;
+  resolved: boolean;
+  forwardScored: boolean | null;
+  midfielderScored: boolean | null;
+  defenderScored: boolean | null;
+}
+
 export interface Me extends Participant {
   pick: Pick | null;
   usedPlayers: string[];
+  history: PickHistoryEntry[];
 }
 
 export interface StateResponse {
@@ -54,4 +67,35 @@ export interface StateResponse {
   fixtures: Fixture[];
   officialFixturesUrl: string;
   me: Me | null;
+}
+
+export interface GameweekPlayerRow {
+  id: number;
+  name: string;
+  overallStatus: "alive" | "eliminated";
+  submitted: boolean;
+  forward: string | null;
+  midfielder: string | null;
+  defender: string | null;
+  forwardScored: boolean | null;
+  midfielderScored: boolean | null;
+  defenderScored: boolean | null;
+  survived: boolean | null;
+  eliminatedThisGW: boolean;
+}
+
+export interface TopPick {
+  name: string;
+  picks: number;
+  scored: boolean;
+}
+
+export interface GameweekReport {
+  gw: number;
+  currentGW: number;
+  resolved: boolean;
+  scorers: string[];
+  players: GameweekPlayerRow[];
+  poolStats: { total: number; stillStanding: number; eliminated: number };
+  topPicks: { forward: TopPick[]; midfielder: TopPick[]; defender: TopPick[] } | null;
 }
