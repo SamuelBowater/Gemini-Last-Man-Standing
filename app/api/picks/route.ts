@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { getCurrentParticipantId } from "@/lib/session";
+import { withErrors } from "@/lib/api-wrapper";
 
-export async function POST(req: NextRequest) {
+export const POST = withErrors(async (req: NextRequest) => {
   await ensureSchema();
   const participantId = await getCurrentParticipantId();
   if (!participantId) {
@@ -58,4 +59,4 @@ export async function POST(req: NextRequest) {
   );
 
   return NextResponse.json({ ok: true });
-}
+});

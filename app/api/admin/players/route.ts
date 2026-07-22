@@ -2,17 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { isAdmin } from "@/lib/session";
 import { generateCode } from "@/lib/game";
+import { withErrors } from "@/lib/api-wrapper";
 
-export async function GET() {
+export const GET = withErrors(async () => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   const { rows } = await pool.query(
     `SELECT id, name, code, status, eliminated_gw AS "eliminatedGW" FROM participants ORDER BY created_at ASC`
   );
   return NextResponse.json({ participants: rows });
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withErrors(async (req: NextRequest) => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   const { name } = await req.json().catch(() => ({ name: "" }));
@@ -35,13 +36,13 @@ export async function POST(req: NextRequest) {
     [trimmed, code]
   );
   return NextResponse.json({ participant: rows[0] });
-}
+});
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withErrors(async (req: NextRequest) => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
   await pool.query("DELETE FROM participants WHERE id = $1", [id]);
   return NextResponse.json({ ok: true });
-}
+});

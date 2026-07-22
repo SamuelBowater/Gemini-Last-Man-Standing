@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { isAdmin } from "@/lib/session";
+import { withErrors } from "@/lib/api-wrapper";
 
-export async function GET() {
+export const GET = withErrors(async () => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   const { rows: gsRows } = await pool.query("SELECT current_gw, season FROM game_state WHERE id = 1");
@@ -12,9 +13,9 @@ export async function GET() {
     [gs.season, gs.current_gw]
   );
   return NextResponse.json({ fixtures: rows, currentGW: gs.current_gw, season: gs.season });
-}
+});
 
-export async function POST(req: NextRequest) {
+export const POST = withErrors(async (req: NextRequest) => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   const { home, away, kickoff } = await req.json().catch(() => ({}));
@@ -31,13 +32,13 @@ export async function POST(req: NextRequest) {
   );
 
   return NextResponse.json({ ok: true });
-}
+});
 
-export async function DELETE(req: NextRequest) {
+export const DELETE = withErrors(async (req: NextRequest) => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   const id = req.nextUrl.searchParams.get("id");
   if (!id) return NextResponse.json({ error: "Missing id." }, { status: 400 });
   await pool.query("DELETE FROM fixtures WHERE id = $1", [id]);
   return NextResponse.json({ ok: true });
-}
+});

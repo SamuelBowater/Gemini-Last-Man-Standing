@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { getCurrentParticipantId } from "@/lib/session";
 import { officialFixturesUrl } from "@/lib/game";
+import { withErrors } from "@/lib/api-wrapper";
 
-export async function GET() {
+export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
@@ -61,4 +62,4 @@ export async function GET() {
     officialFixturesUrl: officialFixturesUrl(gs.season, gs.current_gw),
     me,
   });
-}
+});

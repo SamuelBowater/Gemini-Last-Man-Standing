@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { isAdmin } from "@/lib/session";
+import { withErrors } from "@/lib/api-wrapper";
 
-export async function POST(req: NextRequest) {
+export const POST = withErrors(async (req: NextRequest) => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
 
@@ -82,4 +83,4 @@ export async function POST(req: NextRequest) {
   } finally {
     client.release();
   }
-}
+});

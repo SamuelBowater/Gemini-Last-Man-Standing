@@ -31,8 +31,16 @@ let schemaReady: Promise<void> | null = null;
 
 /** Idempotent — safe to call at the top of every route. Only actually runs once per warm instance. */
 export function ensureSchema(): Promise<void> {
+  if (!connectionString) {
+    return Promise.reject(
+      new Error(
+        "No database configured. Set POSTGRES_URL (or DATABASE_URL) in your environment and restart the server."
+      )
+    );
+  }
   if (!schemaReady) {
-    schemaReady = pool.query(`
+    schemaReady = pool
+      .query(`
       CREATE TABLE IF NOT EXISTS game_state (
         id INTEGER PRIMARY KEY DEFAULT 1,
         current_gw INTEGER NOT NULL DEFAULT 1,
@@ -95,7 +103,14 @@ export function ensureSchema(): Promise<void> {
         CONSTRAINT single_row CHECK (id = 1)
       );
       INSERT INTO sync_meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
-    `).then(() => undefined);
+    `)
+      .then(() => undefined)
+      .catch((err) => {
+        // Don't leave a permanently-rejected promise cached — let the next
+        // request try again (handy after fixing a bad connection string).
+        schemaReady = null;
+        throw err;
+      });
   }
   return schemaReady;
 }

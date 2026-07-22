@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminSession } from "@/lib/session";
+import { withErrors } from "@/lib/api-wrapper";
 
-export async function POST(req: NextRequest) {
+export const POST = withErrors(async (req: NextRequest) => {
   const { passcode } = await req.json().catch(() => ({ passcode: "" }));
   const expected = process.env.ADMIN_PASSCODE;
   if (!expected) {
@@ -15,4 +16,4 @@ export async function POST(req: NextRequest) {
   }
   await createAdminSession();
   return NextResponse.json({ ok: true });
-}
+});

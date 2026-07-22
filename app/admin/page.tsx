@@ -255,7 +255,11 @@ function FixturesSourcePanel({
     setMsg("Syncing…");
     try {
       const res = await api("/api/cron/sync-fixtures");
-      setMsg(`Synced ${res.fixturesSynced} fixtures.`);
+      if (res.fixturesSynced === 0) {
+        setMsg(res.note || `API-Football returned ${res.resultsFromApi ?? 0} raw results, but 0 matched a gameweek.`);
+      } else {
+        setMsg(`Synced ${res.fixturesSynced} fixtures (of ${res.resultsFromApi} returned by the API).`);
+      }
       onChange();
     } catch (e) {
       setMsg((e as Error).message);
