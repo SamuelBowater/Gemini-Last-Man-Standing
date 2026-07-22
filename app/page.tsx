@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { POSITIONS, SUGGESTED, PositionKey } from "@/lib/data";
 import { STATUS_LABEL, normalizeTeamName, type PlayerStatus } from "@/lib/players";
 import type { StateResponse, Fixture, LivePlayer } from "@/lib/types";
@@ -60,6 +60,7 @@ export default function Home() {
   const [state, setState] = useState<StateResponse | null>(null);
   const [players, setPlayers] = useState<LivePlayer[]>([]);
   const [loading, setLoading] = useState(true);
+  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await api("/api/state");
@@ -71,7 +72,7 @@ export default function Home() {
       .then((d) => setPlayers(d.players))
       .catch(() => {});
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
-    Promise.all([refresh(), loadPlayers, wait(5000)]).finally(() => setLoading(false));
+    Promise.all([refresh(), loadPlayers, wait(2000)]).finally(() => setLoading(false));
   }, [refresh]);
 
   if (loading) {
@@ -97,7 +98,16 @@ export default function Home() {
 
   return (
     <div className="max-w-[760px] mx-auto px-4 pb-24 pt-7">
-      <Hero gameState={gameState} aliveCount={alive.length} total={participants.length} />
+      <Hero
+        gameState={gameState}
+        aliveCount={alive.length}
+        total={participants.length}
+        onHowItWorks={() => setHowItWorksOpen(true)}
+      />
+
+      <Modal open={howItWorksOpen} onClose={() => setHowItWorksOpen(false)}>
+        <HowItWorks />
+      </Modal>
 
       {me && (
         <div className="flex justify-between items-center mb-4 text-[13px] text-text-dim">
@@ -158,10 +168,12 @@ function Hero({
   gameState,
   aliveCount,
   total,
+  onHowItWorks,
 }: {
   gameState: StateResponse["gameState"];
   aliveCount: number;
   total: number;
+  onHowItWorks: () => void;
 }) {
   return (
     <div className="text-center pb-6 mb-6 border-b border-line">
@@ -186,6 +198,52 @@ function Hero({
           <div key={i} className={`px-5 py-2.5 text-center ${i < 2 ? "border-r border-line" : ""}`}>
             <div className="font-mono text-[22px] font-bold text-accent">{cell.num}</div>
             <div className="text-[10px] tracking-[1.5px] text-text-dim uppercase mt-0.5">{cell.label}</div>
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={onHowItWorks}
+        className="mt-4 text-[12.5px] text-accent border-b border-dotted border-accent no-underline"
+      >
+        How it works
+      </button>
+    </div>
+  );
+}
+
+function HowItWorks() {
+  const steps = [
+    {
+      title: "Pick Your Players",
+      body: "Every gameweek, choose one Forward, one Midfielder and one Defender from the player pool.",
+    },
+    {
+      title: "Survive the Gameweek",
+      body: "As long as at least one of your three finds the net, you live to fight another week.",
+    },
+    {
+      title: "No Repeats",
+      body: "Once you've picked a player, they're off the table for the rest of the season.",
+    },
+    {
+      title: "Be the Last Man Standing",
+      body: "Keep surviving gameweek after gameweek — whoever's left standing at the end wins the whole pool.",
+    },
+  ];
+
+  return (
+    <div>
+      <h2 className="font-display text-2xl mb-4 text-text">How it works</h2>
+      <div className="flex flex-col gap-4">
+        {steps.map((step, i) => (
+          <div key={step.title} className="flex gap-3.5">
+            <div className="w-8 h-8 min-w-8 rounded-full bg-accent text-white flex items-center justify-center font-display text-[15px]">
+              {i + 1}
+            </div>
+            <div>
+              <div className="font-semibold text-text mb-0.5">{step.title}</div>
+              <div className="text-text-dim text-[13.5px] leading-relaxed">{step.body}</div>
+            </div>
           </div>
         ))}
       </div>

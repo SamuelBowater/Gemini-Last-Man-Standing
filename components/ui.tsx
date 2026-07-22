@@ -86,6 +86,38 @@ export function EmptyNote({ children }: { children: ReactNode }) {
   return <div className="text-text-dim text-[13.5px] text-center py-2.5">{children}</div>;
 }
 
+export function Modal({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      onClick={onClose}
+    >
+      <div
+        className="bg-panel border border-line rounded-2xl shadow-lg max-w-[520px] w-full max-h-[85vh] overflow-y-auto p-6 relative"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-4 right-4 text-text-dim hover:text-text text-xl leading-none"
+        >
+          ×
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function LoadingScreen({ label = "One sec…" }: { label?: string }) {
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center">

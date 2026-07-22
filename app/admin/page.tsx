@@ -38,7 +38,7 @@ export default function AdminPage() {
   const [authed, setAuthed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    Promise.all([api("/api/admin/me"), wait(5000)]).then(([d]) => setAuthed(d.isAdmin));
+    Promise.all([api("/api/admin/me"), wait(2000)]).then(([d]) => setAuthed(d.isAdmin));
   }, []);
 
   if (authed === null) {
@@ -122,7 +122,7 @@ function AdminDashboard() {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
-    Promise.all([refresh(), wait(5000)]);
+    Promise.all([refresh(), wait(2000)]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
