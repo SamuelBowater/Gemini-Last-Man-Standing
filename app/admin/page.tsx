@@ -94,21 +94,23 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 function AdminDashboard() {
   const [players, setPlayers] = useState<AdminParticipant[]>([]);
   const [fixtures, setFixtures] = useState<AdminFixture[]>([]);
+  const [selectedGW, setSelectedGW] = useState(1);
   const [gameState, setGameState] = useState<{ currentGW: number; phase: string; season: string } | null>(null);
   const [syncStatus, setSyncStatus] = useState<{ lastSyncedAt: string | null; lastError: string | null } | null>(null);
 
   const refresh = useCallback(async () => {
-    const [pubState, playersRes, fixturesRes, syncRes] = await Promise.all([
-      api("/api/state"),
-      api("/api/admin/players"),
-      api("/api/admin/fixtures"),
-      api("/api/admin/sync-status"),
-    ]);
-    setGameState(pubState.gameState);
-    setPlayers(playersRes.participants);
-    setFixtures(fixturesRes.fixtures);
-    setSyncStatus(syncRes);
-  }, []);
+  const [pubState, playersRes, fixturesRes, syncRes] = await Promise.all([
+    api("/api/state"),
+    api("/api/admin/players"),
+    api(`/api/admin/fixtures?gw=${selectedGW}`),
+    api("/api/admin/sync-status"),
+  ]);
+
+  setGameState(pubState.gameState);
+  setPlayers(playersRes.participants);
+  setFixtures(fixturesRes.fixtures);
+  setSyncStatus(syncRes);
+}, [selectedGW]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
@@ -146,7 +148,12 @@ function AdminDashboard() {
 
       <PlayersPanel players={players} onChange={refresh} />
       <FixturesSourcePanel gameState={gameState} syncStatus={syncStatus} onChange={refresh} />
-      <ManualFixturesPanel fixtures={fixtures} onChange={refresh} />
+      <ManualFixturesPanel
+    fixtures={fixtures}
+    selectedGW={selectedGW}
+    setSelectedGW={setSelectedGW}
+    onChange={refresh}
+/>
       <ResultsPanel gameState={gameState} onChange={refresh} />
       <DangerZone onChange={refresh} />
 
@@ -320,7 +327,17 @@ function FixturesSourcePanel({
   );
 }
 
-function ManualFixturesPanel({ fixtures, onChange }: { fixtures: AdminFixture[]; onChange: () => void }) {
+function ManualFixturesPanel({
+    fixtures,
+    selectedGW,
+    setSelectedGW,
+    onChange,
+}: {
+    fixtures: AdminFixture[];
+    selectedGW: number;
+    setSelectedGW: React.Dispatch<React.SetStateAction<number>>;
+    onChange: () => void;
+}) {
   const [home, setHome] = useState("");
   const [away, setAway] = useState("");
   const [kickoff, setKickoff] = useState("");
@@ -335,7 +352,12 @@ function ManualFixturesPanel({ fixtures, onChange }: { fixtures: AdminFixture[];
     try {
       await api("/api/admin/fixtures", {
         method: "POST",
-        body: JSON.stringify({ home, away, kickoff: kickoff ? new Date(kickoff).toISOString() : null }),
+        body: JSON.stringify({
+  home,
+  away,
+  kickoff: kickoff ? new Date(kickoff).toISOString() : null,
+  gw: selectedGW,
+}),
       });
       setHome("");
       setAway("");
@@ -354,6 +376,21 @@ function ManualFixturesPanel({ fixtures, onChange }: { fixtures: AdminFixture[];
   return (
     <Panel>
       <PanelTitle>Manage fixtures manually</PanelTitle>
+      <div className="mb-4">
+        <label className="block text-sm mb-2">Gameweek</label>
+
+        <select
+          value={selectedGW}
+          onChange={(e) => setSelectedGW(Number(e.target.value))}
+          className="bg-bg-deep border border-line rounded-lg px-3 py-2"
+        >
+          {Array.from({ length: 38 }, (_, i) => (
+            <option key={i + 1} value={i + 1}>
+              Gameweek {i + 1}
+            </option>
+          ))}
+        </select>
+      </div>
       <Sub>Add or fix individual matches by hand — useful for postponements.</Sub>
       <div className="flex gap-2.5 mb-2.5">
         <TextInput list="teams" value={home} onChange={(e) => setHome(e.target.value)} placeholder="Home team" />
