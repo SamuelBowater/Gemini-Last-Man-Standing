@@ -74,7 +74,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="max-w-[480px] mx-auto px-4 py-16">
       <Panel>
-        <PanelTitle>Commissioner login</PanelTitle>
+        <PanelTitle>Admin login</PanelTitle>
         <Sub>Enter the admin passcode set in your environment (ADMIN_PASSCODE).</Sub>
         <div className="flex gap-2.5">
           <TextInput
@@ -134,7 +134,7 @@ function AdminDashboard() {
   if (!gameState) {
     return (
       <div className="max-w-[640px] mx-auto px-4">
-        <LoadingScreen label="Loading the commissioner dashboard…" />
+        <LoadingScreen label="Loading the admin dashboard…" />
       </div>
     );
   }
@@ -142,7 +142,7 @@ function AdminDashboard() {
   return (
     <div className="max-w-[640px] mx-auto px-4 pb-24 pt-8">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="font-display text-3xl">Commissioner</h1>
+        <h1 className="font-display text-3xl">Admin</h1>
         <GhostButton
           className="text-[11px] px-3 py-1.5"
           onClick={async () => {

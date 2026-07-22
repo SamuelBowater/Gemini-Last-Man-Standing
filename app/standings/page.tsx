@@ -147,7 +147,7 @@ export default function StandingsPage() {
               ) : (
                 <>
                   Gameweek {gw} hasn&apos;t been resolved yet — picks stay hidden until the
-                  commissioner logs results, to keep things fair.
+                  admin logs results, to keep things fair.
                 </>
               )}
             </div>
@@ -191,7 +191,7 @@ export default function StandingsPage() {
             </div>
           ) : (
             <EmptyNote>
-              Top picks reveal once gameweek {gw} is resolved by the commissioner.
+              Top picks reveal once gameweek {gw} is resolved by the admin.
             </EmptyNote>
           ))}
       </Panel>

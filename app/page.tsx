@@ -152,7 +152,7 @@ export default function Home() {
         <Panel>
           <PanelTitle>No players yet</PanelTitle>
           <Sub>
-            The commissioner needs to add players before anyone can log in. Head to{" "}
+            The admin needs to add players before anyone can log in. Head to{" "}
             <Link href="/admin" className="text-accent underline">
               /admin
             </Link>{" "}
@@ -168,12 +168,6 @@ export default function Home() {
       )}
 
       {me && <PickHistoryPanel history={me.history} />}
-
-      <div className="text-center mt-8">
-        <Link href="/admin" className="text-text-dim text-[11px] font-mono hover:text-accent">
-          Commissioner login →
-        </Link>
-      </div>
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
         GEMINI'S LAST MAN STANDING · one net, three shots, no excuses
@@ -228,6 +222,18 @@ function Hero({
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
           Standings
+        </Link>
+        <Link
+          href="/demo"
+          className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
+        >
+          Demo
+        </Link>
+        <Link
+          href="/admin"
+          className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
+        >
+          Admin
         </Link>
       </div>
     </div>
@@ -323,7 +329,7 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Panel>
       <PanelTitle>Log in</PanelTitle>
-      <Sub>Enter the 4-digit code the commissioner gave you.</Sub>
+      <Sub>Enter the 4-digit code the admin gave you.</Sub>
       <div className="flex gap-2.5">
         <TextInput
           value={code}
@@ -558,7 +564,7 @@ function PickZone({
             </span>
           </div>
           <Sub>
-            <span className="block mt-3.5">Waiting on the commissioner to log this gameweek&apos;s results.</span>
+            <span className="block mt-3.5">Waiting on the admin to log this gameweek&apos;s results.</span>
           </Sub>
         </Panel>
       );
