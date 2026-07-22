@@ -7,7 +7,7 @@ const spaceMono = Space_Mono({ weight: ["400", "700"], subsets: ["latin"], varia
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "Last Man Standing",
+  title: "Gemini's Last Man Standing",
   description: "Premier League survival pool — pick a forward, a midfielder and a defender every gameweek.",
 };
 
