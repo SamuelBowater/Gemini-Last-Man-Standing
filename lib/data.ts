@@ -31,4 +31,4 @@ export const TEAMS = [
   "West Ham United", "Wolves",
 ];
 
-export const PL_LEAGUE_ID = "39";
+export const FD_COMPETITION_CODE = "PL"; // football-data.org's code for the Premier League

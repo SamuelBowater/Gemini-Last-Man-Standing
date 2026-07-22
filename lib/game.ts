@@ -8,12 +8,6 @@ export function generateCode(existing: Set<string>): string {
   return code;
 }
 
-export function extractRoundNumber(roundLabel: string | null | undefined): number | null {
-  if (!roundLabel) return null;
-  const match = /(\d+)\s*$/.exec(roundLabel);
-  return match ? parseInt(match[1], 10) : null;
-}
-
 export function officialFixturesUrl(season: string, gw: number) {
   return `https://www.premierleague.com/en/matches/premier-league/${season}/matchweek-${gw}`;
 }

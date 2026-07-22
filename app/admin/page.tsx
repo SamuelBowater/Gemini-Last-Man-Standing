@@ -94,7 +94,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 function AdminDashboard() {
   const [players, setPlayers] = useState<AdminParticipant[]>([]);
   const [fixtures, setFixtures] = useState<AdminFixture[]>([]);
-  const [gameState, setGameState] = useState<{ currentGW: number; phase: string; season: string; apiSeason: string } | null>(null);
+  const [gameState, setGameState] = useState<{ currentGW: number; phase: string; season: string } | null>(null);
   const [syncStatus, setSyncStatus] = useState<{ lastSyncedAt: string | null; lastError: string | null } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -228,12 +228,11 @@ function FixturesSourcePanel({
   syncStatus,
   onChange,
 }: {
-  gameState: { season: string; apiSeason: string };
+  gameState: { season: string };
   syncStatus: { lastSyncedAt: string | null; lastError: string | null } | null;
   onChange: () => void;
 }) {
   const [season, setSeason] = useState(gameState.season);
-  const [apiSeason, setApiSeason] = useState(gameState.apiSeason);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -241,7 +240,7 @@ function FixturesSourcePanel({
     setBusy(true);
     setMsg("");
     try {
-      await api("/api/admin/settings", { method: "POST", body: JSON.stringify({ season, apiSeason }) });
+      await api("/api/admin/settings", { method: "POST", body: JSON.stringify({ season }) });
       setMsg("Saved.");
       onChange();
     } catch (e) {
@@ -269,9 +268,9 @@ function FixturesSourcePanel({
 
   async function checkAccountStatus() {
     setBusy(true);
-    setMsg("Checking API-Football account status…");
+    setMsg("Checking football-data.org connection…");
     try {
-      const res = await api("/api/admin/api-football-status");
+      const res = await api("/api/admin/football-data-status");
       setMsg(JSON.stringify(res.body, null, 2));
     } catch (e) {
       setMsg((e as Error).message);
@@ -283,19 +282,15 @@ function FixturesSourcePanel({
     <Panel>
       <PanelTitle>Live fixtures source</PanelTitle>
       <Sub>
-        Fixtures sync automatically once a day from API-Football (set API_FOOTBALL_KEY and
-        CRON_SECRET in your environment, and the Vercel Cron job in vercel.json handles the
-        rest). You can also trigger a sync manually here.
+        Fixtures sync automatically once a day from football-data.org (set FOOTBALL_DATA_API_KEY
+        and CRON_SECRET in your environment — the Vercel Cron job in vercel.json handles the
+        rest). It always fetches whatever season football-data.org currently considers
+        &quot;current&quot; for the Premier League, so there&apos;s no season parameter to configure.
+        You can also trigger a sync manually here.
       </Sub>
-      <div className="flex gap-2.5 mb-2.5">
-        <div className="flex-1">
-          <div className="text-[11px] text-text-dim mb-1 font-mono">Official site season code</div>
-          <TextInput value={season} onChange={(e) => setSeason(e.target.value)} placeholder="2026-27" />
-        </div>
-        <div className="flex-1">
-          <div className="text-[11px] text-text-dim mb-1 font-mono">API-Football season year</div>
-          <TextInput value={apiSeason} onChange={(e) => setApiSeason(e.target.value)} placeholder="2026" />
-        </div>
+      <div className="mb-2.5">
+        <div className="text-[11px] text-text-dim mb-1 font-mono">Official site season code (for the premierleague.com link only)</div>
+        <TextInput value={season} onChange={(e) => setSeason(e.target.value)} placeholder="2026-27" />
       </div>
       <div className="flex gap-2.5 flex-wrap">
         <GhostButton onClick={saveSettings} disabled={busy}>
@@ -305,7 +300,7 @@ function FixturesSourcePanel({
           Sync fixtures now
         </GhostButton>
         <GhostButton onClick={checkAccountStatus} disabled={busy}>
-          Check API-Football account status
+          Check football-data.org connection
         </GhostButton>
       </div>
       {msg && (

@@ -8,7 +8,7 @@ export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, api_season FROM game_state WHERE id = 1"
+    "SELECT current_gw, phase, season FROM game_state WHERE id = 1"
   );
   const gs = gsRows[0];
 
@@ -56,7 +56,7 @@ export const GET = withErrors(async () => {
   }
 
   return NextResponse.json({
-    gameState: { currentGW: gs.current_gw, phase: gs.phase, season: gs.season, apiSeason: gs.api_season },
+    gameState: { currentGW: gs.current_gw, phase: gs.phase, season: gs.season },
     participants: participants.map((p) => ({ ...p, submitted: submittedSet.has(p.id) })),
     fixtures,
     officialFixturesUrl: officialFixturesUrl(gs.season, gs.current_gw),

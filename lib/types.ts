@@ -4,7 +4,6 @@ export interface GameState {
   currentGW: number;
   phase: Phase;
   season: string;
-  apiSeason: string;
 }
 
 export interface Participant {

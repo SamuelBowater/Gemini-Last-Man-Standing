@@ -3,7 +3,7 @@
 A Premier League survival pool app. Everyone logs in with a 4-digit code,
 picks a forward/midfielder/defender each gameweek, and is eliminated if
 none of the three scores. Fixtures sync automatically once a day from
-API-Football.
+football-data.org.
 
 ## Stack
 
@@ -32,7 +32,7 @@ or in `.env.local` for local development (copy `.env.example`):
 | `POSTGRES_URL` | Set automatically if you used Vercel Postgres |
 | `ADMIN_PASSCODE` | A password you make up — protects `/admin` |
 | `SESSION_SECRET` | A long random string you make up — signs the admin cookie |
-| `API_FOOTBALL_KEY` | Your key from dashboard.api-football.com |
+| `FOOTBALL_DATA_API_KEY` | Your free token from football-data.org (register at https://www.football-data.org/client/register) |
 | `CRON_SECRET` | A long random string you make up — Vercel sends this automatically to authorize the daily sync job (see below) |
 
 ## 3. Deploy
