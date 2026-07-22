@@ -28,25 +28,45 @@ export const GET = withErrors(async (req: NextRequest) => {
 
   const url = `https://v3.football.api-sports.io/fixtures?league=${PL_LEAGUE_ID}&season=${gs.api_season}`;
   const resp = await fetch(url, { headers: { "x-apisports-key": apiKey } });
-  const data = await resp.json().catch(() => null);
+  const rawText = await resp.text();
+  let data: {
+    errors?: unknown;
+    results?: number;
+    response?: Array<{
+      league?: { round?: string };
+      teams?: { home?: { name?: string }; away?: { name?: string } };
+      fixture?: { date?: string; venue?: { name?: string }; status?: { short?: string } };
+    }>;
+  } | null = null;
 
-  if (!resp.ok || !data) {
-    const message = `API-Football responded ${resp.status}`;
-    await pool.query("UPDATE sync_meta SET last_error = $1 WHERE id = 1", [message]);
-    return NextResponse.json({ error: message }, { status: 502 });
+  try {
+    data = JSON.parse(rawText);
+  } catch {
+    // not JSON — leave data null, diagnostics below will surface rawText
   }
 
-  // API-Football returns 200 with an empty response array (not an HTTP error)
-  // for things like an unsupported season on the free plan, a bad param, or
-  // a plan restriction — so check its own error/results fields explicitly.
-  const apiErrors = data.errors;
+  const apiErrors = data?.errors;
   const hasApiErrors =
-    apiErrors && (Array.isArray(apiErrors) ? apiErrors.length > 0 : Object.keys(apiErrors).length > 0);
+    !!apiErrors && (Array.isArray(apiErrors) ? apiErrors.length > 0 : Object.keys(apiErrors).length > 0);
 
-  if (hasApiErrors) {
-    const message = `API-Football error: ${JSON.stringify(apiErrors)}`;
-    await pool.query("UPDATE sync_meta SET last_error = $1 WHERE id = 1", [message]);
-    return NextResponse.json({ error: message, apiErrors, resultsFromApi: data.results ?? 0 }, { status: 502 });
+  const diagnostics = {
+    requestedUrl: url,
+    httpStatus: resp.status,
+    apiErrors: apiErrors ?? null,
+    resultsFromApi: data?.results ?? null,
+    rawSample: !data ? rawText.slice(0, 500) : undefined,
+  };
+
+  if (!resp.ok || !data || hasApiErrors || (data.response || []).length === 0) {
+    const message = hasApiErrors
+      ? `API-Football reported an error: ${JSON.stringify(apiErrors)}`
+      : !resp.ok
+      ? `API-Football responded HTTP ${resp.status}.`
+      : `API-Football responded OK but with 0 fixtures for season=${gs.api_season}.`;
+    await pool.query("UPDATE sync_meta SET last_error = $1 WHERE id = 1", [
+      `${message} ${JSON.stringify(diagnostics)}`.slice(0, 2000),
+    ]);
+    return NextResponse.json({ ok: false, fixturesSynced: 0, message, diagnostics }, { status: 200 });
   }
 
   let count = 0;
@@ -75,14 +95,6 @@ export const GET = withErrors(async (req: NextRequest) => {
     count++;
   }
 
-  if (count === 0) {
-    // Not an error exactly, but worth surfacing why: API responded fine but
-    // had nothing usable for this season/league combination.
-    const message = `API-Football returned ${data.results ?? 0} raw result(s) for season=${gs.api_season}, but none matched a parseable gameweek. This usually means the season parameter isn't covered by your plan, or hasn't been published yet.`;
-    await pool.query("UPDATE sync_meta SET last_synced_at = now(), last_error = $1 WHERE id = 1", [message]);
-    return NextResponse.json({ ok: true, fixturesSynced: 0, resultsFromApi: data.results ?? 0, note: message });
-  }
-
   await pool.query("UPDATE sync_meta SET last_synced_at = now(), last_error = NULL WHERE id = 1");
-  return NextResponse.json({ ok: true, fixturesSynced: count, resultsFromApi: data.results ?? 0 });
+  return NextResponse.json({ ok: true, fixturesSynced: count, diagnostics });
 });

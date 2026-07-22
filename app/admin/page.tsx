@@ -255,12 +255,24 @@ function FixturesSourcePanel({
     setMsg("Syncing…");
     try {
       const res = await api("/api/cron/sync-fixtures");
-      if (res.fixturesSynced === 0) {
-        setMsg(res.note || `API-Football returned ${res.resultsFromApi ?? 0} raw results, but 0 matched a gameweek.`);
+      if (!res.ok || res.fixturesSynced === 0) {
+        setMsg(`${res.message}\n\n${JSON.stringify(res.diagnostics, null, 2)}`);
       } else {
-        setMsg(`Synced ${res.fixturesSynced} fixtures (of ${res.resultsFromApi} returned by the API).`);
+        setMsg(`Synced ${res.fixturesSynced} fixtures.`);
       }
       onChange();
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  async function checkAccountStatus() {
+    setBusy(true);
+    setMsg("Checking API-Football account status…");
+    try {
+      const res = await api("/api/admin/api-football-status");
+      setMsg(JSON.stringify(res.body, null, 2));
     } catch (e) {
       setMsg((e as Error).message);
     }
@@ -285,15 +297,22 @@ function FixturesSourcePanel({
           <TextInput value={apiSeason} onChange={(e) => setApiSeason(e.target.value)} placeholder="2026" />
         </div>
       </div>
-      <div className="flex gap-2.5">
+      <div className="flex gap-2.5 flex-wrap">
         <GhostButton onClick={saveSettings} disabled={busy}>
           Save settings
         </GhostButton>
         <GhostButton onClick={syncNow} disabled={busy}>
           Sync fixtures now
         </GhostButton>
+        <GhostButton onClick={checkAccountStatus} disabled={busy}>
+          Check API-Football account status
+        </GhostButton>
       </div>
-      {msg && <div className="text-[13px] text-text-dim mt-2.5">{msg}</div>}
+      {msg && (
+        <pre className="text-[12px] text-text-dim mt-2.5 whitespace-pre-wrap break-words font-mono bg-bg-deep border border-line rounded-lg p-3">
+          {msg}
+        </pre>
+      )}
       {syncStatus && (
         <div className="text-[11.5px] text-text-dim font-mono mt-3">
           {syncStatus.lastSyncedAt
