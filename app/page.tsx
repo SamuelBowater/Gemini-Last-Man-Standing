@@ -261,7 +261,7 @@ function FixturesPanel({
         rel="noopener"
         className="inline-block mt-3.5 text-[12.5px] text-gold border-b border-dotted border-gold no-underline"
       >
-        Check kick-off times &amp; live scores on premierleague.com ↗
+        Check live scores on premierleague.com ↗
       </a>
     </Panel>
   );
