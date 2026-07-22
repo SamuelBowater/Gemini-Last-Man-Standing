@@ -201,12 +201,9 @@ function Hero({
           </div>
         ))}
       </div>
-      <button
-        onClick={onHowItWorks}
-        className="mt-4 text-[12.5px] text-accent border-b border-dotted border-accent no-underline"
-      >
+      <GhostButton onClick={onHowItWorks} className="mt-5 px-4 py-2 text-[13px]">
         How it works
-      </button>
+      </GhostButton>
     </div>
   );
 }
