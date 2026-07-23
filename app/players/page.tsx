@@ -82,6 +82,7 @@ export default function Home() {
   const [players, setPlayers] = useState<LivePlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [fixturesOpen, setFixturesOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await api("/api/state");
@@ -122,10 +123,15 @@ export default function Home() {
         aliveCount={alive.length}
         total={participants.length}
         onHowItWorks={() => setHowItWorksOpen(true)}
+        onFixtures={() => setFixturesOpen(true)}
       />
 
       <Modal open={howItWorksOpen} onClose={() => setHowItWorksOpen(false)}>
         <HowItWorks />
+      </Modal>
+
+      <Modal open={fixturesOpen} onClose={() => setFixturesOpen(false)}>
+        <FixturesPanel currentGW={gameState.currentGW} players={players} />
       </Modal>
 
       {me && (
@@ -144,8 +150,6 @@ export default function Home() {
           </GhostButton>
         </div>
       )}
-
-      <FixturesPanel currentGW={gameState.currentGW} players={players} />
 
       {gameState.phase === "finished" && <WinnerBanner alive={alive} gw={gameState.currentGW} />}
 
@@ -205,11 +209,13 @@ function Hero({
   aliveCount,
   total,
   onHowItWorks,
+  onFixtures,
 }: {
   gameState: StateResponse["gameState"];
   aliveCount: number;
   total: number;
   onHowItWorks: () => void;
+  onFixtures: () => void;
 }) {
   return (
     <div className="text-center pb-6 mb-6 border-b border-line">
@@ -246,6 +252,9 @@ function Hero({
       <div className="flex justify-center gap-2.5 mt-5">
         <GhostButton onClick={onHowItWorks} className="px-4 py-2 text-[13px]">
           How it works
+        </GhostButton>
+        <GhostButton onClick={onFixtures} className="px-4 py-2 text-[13px]">
+          Fixtures
         </GhostButton>
         <Link
           href="/standings"
@@ -402,7 +411,7 @@ function FixturesPanel({ currentGW, players }: { currentGW: number; players: Liv
   }, [selectedGW]);
 
   return (
-    <Panel>
+    <div>
       <div className="flex justify-between items-center mb-3">
         <PanelTitle>Fixtures</PanelTitle>
         <select
@@ -468,7 +477,7 @@ function FixturesPanel({ currentGW, players }: { currentGW: number; players: Liv
       >
         Check live scores on premierleague.com ↗
       </a>
-    </Panel>
+    </div>
   );
 }
 
