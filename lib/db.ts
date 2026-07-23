@@ -57,8 +57,12 @@ export function ensureSchema(): Promise<void> {
         code TEXT NOT NULL UNIQUE,
         status TEXT NOT NULL DEFAULT 'alive',
         eliminated_gw INTEGER,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        can_play_players BOOLEAN NOT NULL DEFAULT true,
+        can_play_teams BOOLEAN NOT NULL DEFAULT true
       );
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS can_play_players BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS can_play_teams BOOLEAN NOT NULL DEFAULT true;
 
       CREATE TABLE IF NOT EXISTS sessions (
         token TEXT PRIMARY KEY,

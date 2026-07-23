@@ -13,7 +13,9 @@ export const GET = withErrors(async () => {
   const gs = gsRows[0];
 
   const { rows: participants } = await pool.query(
-    `SELECT id, name, status, eliminated_gw AS "eliminatedGW" FROM participants ORDER BY created_at ASC`
+    `SELECT id, name, status, eliminated_gw AS "eliminatedGW",
+            can_play_players AS "canPlayPlayers", can_play_teams AS "canPlayTeams"
+     FROM participants ORDER BY created_at ASC`
   );
 
   const { rows: submittedRows } = await pool.query(
@@ -32,7 +34,9 @@ export const GET = withErrors(async () => {
 
   if (participantId) {
     const { rows: meRows } = await pool.query(
-      `SELECT id, name, status, eliminated_gw AS "eliminatedGW" FROM participants WHERE id = $1`,
+      `SELECT id, name, status, eliminated_gw AS "eliminatedGW",
+              can_play_players AS "canPlayPlayers", can_play_teams AS "canPlayTeams"
+       FROM participants WHERE id = $1`,
       [participantId]
     );
     if (meRows[0]) {

@@ -111,7 +111,8 @@ export default function Home() {
     );
   }
 
-  const { gameState, participants, me } = state;
+  const { gameState, participants: allParticipants, me } = state;
+  const participants = allParticipants.filter((p) => p.canPlayPlayers);
   const alive = participants.filter((p) => p.status !== "eliminated");
 
   return (
@@ -173,14 +174,27 @@ export default function Home() {
         </Panel>
       )}
 
-      {me && gameState.phase !== "finished" && (
+      {me && !me.canPlayPlayers && (
+        <Panel>
+          <PanelTitle>Not in this pool</PanelTitle>
+          <Sub>
+            The admin hasn&apos;t added you to Player Picks. Head back to the{" "}
+            <Link href="/" className="text-accent underline">
+              home page
+            </Link>{" "}
+            to see what you can play.
+          </Sub>
+        </Panel>
+      )}
+
+      {me && me.canPlayPlayers && gameState.phase !== "finished" && (
         <PickZone me={me} gameState={gameState} players={players} onDone={refresh} />
       )}
 
-      {me && <PickHistoryPanel history={me.history} />}
+      {me && me.canPlayPlayers && <PickHistoryPanel history={me.history} />}
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
-        GEMINI'S LAST MAN STANDING · one net, three shots, no excuses
+        GEMINI&apos;S LAST MAN STANDING · one net, three shots, no excuses
       </footer>
     </div>
   );

@@ -24,6 +24,8 @@ interface AdminParticipant {
   code: string;
   status: "alive" | "eliminated";
   eliminatedGW: number | null;
+  canPlayPlayers: boolean;
+  canPlayTeams: boolean;
 }
 
 export default function AdminPage() {
@@ -167,12 +169,25 @@ function PlayersPanel({ players, onChange }: { players: AdminParticipant[]; onCh
     onChange();
   }
 
+  async function setAccess(p: AdminParticipant, changes: Partial<Pick<AdminParticipant, "canPlayPlayers" | "canPlayTeams">>) {
+    await api("/api/admin/players", {
+      method: "PATCH",
+      body: JSON.stringify({
+        id: p.id,
+        canPlayPlayers: p.canPlayPlayers,
+        canPlayTeams: p.canPlayTeams,
+        ...changes,
+      }),
+    });
+    onChange();
+  }
+
   return (
     <Panel>
       <PanelTitle>Manage players</PanelTitle>
       <Sub>
-        Add everyone in the group. Each gets a random 4-digit code to log in with — the same code
-        works across every game.
+        Add everyone in the group. Each gets a random 4-digit code to log in with. Tick which
+        pools each player is allowed into — some people only want one.
       </Sub>
       <div className="flex gap-2.5">
         <TextInput
@@ -189,18 +204,38 @@ function PlayersPanel({ players, onChange }: { players: AdminParticipant[]; onCh
       <div className="flex flex-col gap-2 mt-4">
         {players.length === 0 && <EmptyNote>No players added yet.</EmptyNote>}
         {players.map((p) => (
-          <div key={p.id} className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3">
-            <div>
-              <div className="font-semibold">{p.name}</div>
-              <div className="font-mono text-[11.5px] text-text-dim">
-                {p.status === "eliminated" ? `Eliminated · GW${p.eliminatedGW}` : "Alive"}
+          <div key={p.id} className="bg-bg-deep border border-line rounded-lg px-3.5 py-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="font-semibold">{p.name}</div>
+                <div className="font-mono text-[11.5px] text-text-dim">
+                  {p.status === "eliminated" ? `Eliminated · GW${p.eliminatedGW}` : "Alive"}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge tone="pending">{p.code}</Badge>
+                <button onClick={() => remove(p.id)} className="text-red text-[11px] font-mono hover:underline">
+                  remove
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge tone="pending">{p.code}</Badge>
-              <button onClick={() => remove(p.id)} className="text-red text-[11px] font-mono hover:underline">
-                remove
-              </button>
+            <div className="flex gap-4 mt-2.5 pt-2.5 border-t border-line">
+              <label className="flex items-center gap-1.5 text-[12px] text-text-dim cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={p.canPlayPlayers}
+                  onChange={(e) => setAccess(p, { canPlayPlayers: e.target.checked })}
+                />
+                Player Picks
+              </label>
+              <label className="flex items-center gap-1.5 text-[12px] text-text-dim cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={p.canPlayTeams}
+                  onChange={(e) => setAccess(p, { canPlayTeams: e.target.checked })}
+                />
+                Team Survival
+              </label>
             </div>
           </div>
         ))}

@@ -27,6 +27,7 @@ function GameCard({
   href,
   cta,
   comingSoon = false,
+  lockedLabel,
 }: {
   eyebrow: string;
   title: string;
@@ -35,18 +36,21 @@ function GameCard({
   href: string;
   cta: string;
   comingSoon?: boolean;
+  lockedLabel?: string;
 }) {
+  const disabled = comingSoon || !!lockedLabel;
+  const badgeLabel = lockedLabel || (comingSoon ? "Coming soon" : null);
   const cardClassName = `group flex flex-col bg-panel border border-line rounded-2xl shadow-sm p-6 transition ${
-    comingSoon ? "opacity-70" : "hover:border-accent hover:-translate-y-0.5"
+    disabled ? "opacity-70" : "hover:border-accent hover:-translate-y-0.5"
   }`;
 
   const content = (
     <>
       <div className="flex items-center justify-between mb-3">
         <div className="font-mono text-[11px] tracking-[2px] uppercase text-accent">{eyebrow}</div>
-        {comingSoon && (
+        {badgeLabel && (
           <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border text-text-dim border-line-strong bg-bg-deep">
-            Coming soon
+            {badgeLabel}
           </span>
         )}
       </div>
@@ -62,7 +66,7 @@ function GameCard({
       </ul>
       <div
         className={`mt-auto font-semibold text-sm rounded-xl px-4 py-2.5 text-center transition ${
-          comingSoon
+          disabled
             ? "bg-bg-deep border border-line-strong text-text-dim"
             : "bg-accent text-white shadow-sm group-hover:brightness-105"
         }`}
@@ -72,7 +76,7 @@ function GameCard({
     </>
   );
 
-  if (comingSoon) {
+  if (disabled) {
     return <div className={cardClassName}>{content}</div>;
   }
   return (
@@ -210,6 +214,7 @@ export default function Landing() {
               ]}
               href="/players"
               cta="Play Player Picks →"
+              lockedLabel={state.me.canPlayPlayers ? undefined : "Not in this pool"}
             />
             <GameCard
               eyebrow="Team Survival"

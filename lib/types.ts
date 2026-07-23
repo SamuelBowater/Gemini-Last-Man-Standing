@@ -26,6 +26,8 @@ export interface Participant {
   status: "alive" | "eliminated";
   eliminatedGW: number | null;
   submitted?: boolean;
+  canPlayPlayers: boolean;
+  canPlayTeams: boolean;
 }
 
 export interface Fixture {
