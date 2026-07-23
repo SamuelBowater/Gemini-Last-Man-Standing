@@ -20,6 +20,7 @@ function wait(ms: number) {
 }
 
 function GameCard({
+  icon,
   eyebrow,
   title,
   description,
@@ -29,6 +30,7 @@ function GameCard({
   comingSoon = false,
   lockedLabel,
 }: {
+  icon: string;
   eyebrow: string;
   title: string;
   description: string;
@@ -41,13 +43,16 @@ function GameCard({
   const disabled = comingSoon || !!lockedLabel;
   const badgeLabel = lockedLabel || (comingSoon ? "Coming soon" : null);
   const cardClassName = `group flex flex-col bg-panel border border-line rounded-2xl shadow-sm p-6 transition ${
-    disabled ? "opacity-70" : "hover:border-accent hover:-translate-y-0.5"
+    disabled ? "opacity-70" : "hover:border-accent hover:shadow-lg hover:-translate-y-1"
   }`;
 
   const content = (
     <>
       <div className="flex items-center justify-between mb-3">
-        <div className="font-mono text-[11px] tracking-[2px] uppercase text-accent">{eyebrow}</div>
+        <div className="flex items-center gap-2">
+          <span className="text-xl leading-none">{icon}</span>
+          <div className="font-mono text-[11px] tracking-[2px] uppercase text-accent">{eyebrow}</div>
+        </div>
         {badgeLabel && (
           <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full border text-text-dim border-line-strong bg-bg-deep">
             {badgeLabel}
@@ -65,13 +70,18 @@ function GameCard({
         ))}
       </ul>
       <div
-        className={`mt-auto font-semibold text-sm rounded-xl px-4 py-2.5 text-center transition ${
+        className={`mt-auto inline-flex items-center justify-center gap-2 font-semibold text-sm rounded-full px-5 py-3 text-center transition ${
           disabled
             ? "bg-bg-deep border border-line-strong text-text-dim"
-            : "bg-accent text-white shadow-sm group-hover:brightness-105"
+            : "bg-gradient-to-r from-accent to-emerald-500 text-white shadow-md group-hover:shadow-lg group-hover:brightness-105"
         }`}
       >
-        {cta}
+        <span>{cta}</span>
+        {disabled ? (
+          <span>⏳</span>
+        ) : (
+          <span className="transition-transform duration-200 group-hover:translate-x-1">→</span>
+        )}
       </div>
     </>
   );
@@ -110,7 +120,7 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Panel>
       <PanelTitle>Log in</PanelTitle>
-      <Sub>Enter the 4-digit code the admin gave you to see which pools you can join.</Sub>
+      <Sub>Enter your 4-digit PIN to see which pools you can join.</Sub>
       <div className="flex gap-2.5">
         <TextInput
           value={code}
@@ -126,6 +136,129 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
       </div>
       {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
     </Panel>
+  );
+}
+
+function ToggleChip({
+  icon,
+  label,
+  checked,
+  onChange,
+}: {
+  icon: string;
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border text-[13px] font-semibold transition ${
+        checked
+          ? "bg-accent/10 border-accent text-accent"
+          : "bg-bg-deep border-line-strong text-text-dim hover:border-accent/40"
+      }`}
+    >
+      <span className="text-base leading-none">{icon}</span>
+      <span>{label}</span>
+      <span className={`transition-opacity ${checked ? "opacity-100" : "opacity-0"}`}>✓</span>
+    </button>
+  );
+}
+
+function SignupPanel({ onSuccess }: { onSuccess: () => void }) {
+  const [name, setName] = useState("");
+  const [pin, setPin] = useState("");
+  const [playPlayers, setPlayPlayers] = useState(true);
+  const [playTeams, setPlayTeams] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    if (!name.trim()) {
+      setError("Enter your name.");
+      return;
+    }
+    if (pin.length !== 4) {
+      setError("Choose a 4-digit PIN.");
+      return;
+    }
+    if (!playPlayers && !playTeams) {
+      setError("Pick at least one pool to join.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await api("/api/signup", {
+        method: "POST",
+        body: JSON.stringify({
+          name: name.trim(),
+          pin,
+          canPlayPlayers: playPlayers,
+          canPlayTeams: playTeams,
+        }),
+      });
+      onSuccess();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <Panel>
+      <PanelTitle>Sign up</PanelTitle>
+      <Sub>Pick a name, choose your own 4-digit PIN, and join whichever pools you fancy.</Sub>
+      <div className="flex flex-col gap-2.5">
+        <TextInput
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="Your name"
+        />
+        <TextInput
+          value={pin}
+          onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="Choose a 4-digit PIN"
+          inputMode="numeric"
+          className="font-mono tracking-[6px] text-center text-lg"
+        />
+        <div className="flex gap-2.5">
+          <ToggleChip icon="⚽" label="Player Picks" checked={playPlayers} onChange={setPlayPlayers} />
+          <ToggleChip icon="🛡️" label="Team Survival" checked={playTeams} onChange={setPlayTeams} />
+        </div>
+        <PrimaryButton onClick={submit} disabled={busy}>
+          {busy ? "…" : "✍️ Sign up"}
+        </PrimaryButton>
+      </div>
+      {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
+    </Panel>
+  );
+}
+
+function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
+  const [tab, setTab] = useState<"login" | "signup">("login");
+
+  return (
+    <div>
+      <div className="inline-flex mb-4 border border-line-strong rounded-lg overflow-hidden">
+        {(["login", "signup"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className={`px-4 py-2 text-[13px] font-semibold transition ${
+              tab === t ? "bg-accent text-white" : "bg-transparent text-text-dim hover:text-text"
+            }`}
+          >
+            {t === "signup" ? "Sign up" : "Log in"}
+          </button>
+        ))}
+      </div>
+      {tab === "signup" ? <SignupPanel onSuccess={onSuccess} /> : <LoginPanel onSuccess={onSuccess} />}
+    </div>
   );
 }
 
@@ -171,20 +304,7 @@ export default function Landing() {
           Couldn&apos;t load the pool. Refresh to try again.
         </div>
       ) : !state.me ? (
-        state.participants.length === 0 ? (
-          <Panel>
-            <PanelTitle>No players yet</PanelTitle>
-            <Sub>
-              The admin needs to add players before anyone can log in. Head to{" "}
-              <Link href="/admin" className="text-accent underline">
-                /admin
-              </Link>{" "}
-              to add the group and hand out codes.
-            </Sub>
-          </Panel>
-        ) : (
-          <LoginPanel onSuccess={refresh} />
-        )
+        <AuthPanel onSuccess={refresh} />
       ) : (
         <>
           <div className="flex justify-between items-center mb-5 text-[13px] text-text-dim">
@@ -204,6 +324,7 @@ export default function Landing() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <GameCard
+              icon="⚽"
               eyebrow="Player Picks"
               title="Forward, Mid & Def"
               description="Pick a forward, a midfielder and a defender every gameweek — one of them has to find the net or you're out."
@@ -213,10 +334,11 @@ export default function Landing() {
                 "Survive as long as one of your three scores",
               ]}
               href="/players"
-              cta="Play Player Picks →"
+              cta="Play Player Picks"
               lockedLabel={state.me.canPlayPlayers ? undefined : "Not in this pool"}
             />
             <GameCard
+              icon="🛡️"
               eyebrow="Team Survival"
               title="Pick a Team"
               description="Pick one Premier League team each gameweek — if they win, you go through. If they lose, you're out."

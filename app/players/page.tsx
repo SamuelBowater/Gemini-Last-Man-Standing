@@ -265,12 +265,6 @@ function Hero({
           📊 Standings
         </Link>
         <Link
-          href="/demo"
-          className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
-        >
-          🎮 Demo
-        </Link>
-        <Link
           href="/players/admin"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >

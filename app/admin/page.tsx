@@ -120,15 +120,23 @@ function AdminDashboard() {
     <div className="max-w-[640px] mx-auto px-4 pb-24 pt-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="font-display text-3xl">Admin</h1>
-        <GhostButton
-          className="text-[11px] px-3 py-1.5"
-          onClick={async () => {
-            await api("/api/admin/logout", { method: "POST" });
-            location.reload();
-          }}
-        >
-          Log out
-        </GhostButton>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/demo"
+            className="font-semibold text-sm rounded-xl px-3 py-1.5 text-[11px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
+          >
+            🎮 Demo
+          </Link>
+          <GhostButton
+            className="text-[11px] px-3 py-1.5"
+            onClick={async () => {
+              await api("/api/admin/logout", { method: "POST" });
+              location.reload();
+            }}
+          >
+            Log out
+          </GhostButton>
+        </div>
       </div>
 
       <PlayersPanel players={players} onChange={refresh} />
@@ -186,8 +194,9 @@ function PlayersPanel({ players, onChange }: { players: AdminParticipant[]; onCh
     <Panel>
       <PanelTitle>Manage players</PanelTitle>
       <Sub>
-        Add everyone in the group. Each gets a random 4-digit code to log in with. Tick which
-        pools each player is allowed into — some people only want one.
+        Players can sign up themselves on the home page with their own name and PIN. Use this to
+        add someone manually instead (they get a random 4-digit code). Tick which pools each
+        player is allowed into — some people only want one.
       </Sub>
       <div className="flex gap-2.5">
         <TextInput
