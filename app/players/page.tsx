@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { POSITIONS, SUGGESTED, PositionKey } from "@/lib/data";
 import { STATUS_LABEL, normalizeTeamName, type PlayerStatus } from "@/lib/players";
 import type { StateResponse, Fixture, LivePlayer, PickHistoryEntry } from "@/lib/types";
@@ -148,20 +148,30 @@ export default function Home() {
 
       {gameState.phase === "finished" && <WinnerBanner alive={alive} gw={gameState.currentGW} />}
 
-      {!me && participants.length === 0 && (
+      {!me && (
         <Panel>
-          <PanelTitle>No players yet</PanelTitle>
+          <PanelTitle>{participants.length === 0 ? "No players yet" : "Log in required"}</PanelTitle>
           <Sub>
-            The admin needs to add players before anyone can log in. Head to{" "}
-            <Link href="/admin" className="text-accent underline">
-              /admin
-            </Link>{" "}
-            to add the group and hand out codes.
+            {participants.length === 0 ? (
+              <>
+                The admin needs to add players before anyone can log in. Head to{" "}
+                <Link href="/admin" className="text-accent underline">
+                  /admin
+                </Link>{" "}
+                to add the group and hand out codes.
+              </>
+            ) : (
+              <>
+                Head back to the{" "}
+                <Link href="/" className="text-accent underline">
+                  home page
+                </Link>{" "}
+                to log in with your 4-digit code.
+              </>
+            )}
           </Sub>
         </Panel>
       )}
-
-      {!me && participants.length > 0 && <LoginPanel onSuccess={refresh} />}
 
       {me && gameState.phase !== "finished" && (
         <PickZone me={me} gameState={gameState} players={players} onDone={refresh} />
@@ -236,7 +246,7 @@ function Hero({
           Demo
         </Link>
         <Link
-          href="/admin"
+          href="/players/admin"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
           Admin
@@ -308,49 +318,6 @@ function WinnerBanner({ alive, gw }: { alive: StateResponse["participants"]; gw:
           : `Nobody's scorers came through in gameweek ${gw}. The pool ends with no survivor.`}
       </p>
     </div>
-  );
-}
-
-function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
-  const [code, setCode] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function submit() {
-    if (code.length !== 4) {
-      setError("Enter all 4 digits.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    try {
-      await api("/api/login", { method: "POST", body: JSON.stringify({ code }) });
-      onSuccess();
-    } catch (e) {
-      setError((e as Error).message);
-    }
-    setBusy(false);
-  }
-
-  return (
-    <Panel>
-      <PanelTitle>Log in</PanelTitle>
-      <Sub>Enter the 4-digit code the admin gave you.</Sub>
-      <div className="flex gap-2.5">
-        <TextInput
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
-          onKeyDown={(e) => e.key === "Enter" && submit()}
-          placeholder="0000"
-          inputMode="numeric"
-          className="font-mono tracking-[6px] text-center text-lg"
-        />
-        <PrimaryButton onClick={submit} disabled={busy}>
-          {busy ? "…" : "Log in"}
-        </PrimaryButton>
-      </div>
-      {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
-    </Panel>
   );
 }
 
