@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { POSITIONS, SUGGESTED, PositionKey } from "@/lib/data";
 import { STATUS_LABEL, normalizeTeamName, type PlayerStatus } from "@/lib/players";
 import type { StateResponse, Fixture, LivePlayer, PickHistoryEntry } from "@/lib/types";
@@ -146,7 +146,7 @@ export default function Home() {
               refresh();
             }}
           >
-            Log out
+            🚪 Log out
           </GhostButton>
         </div>
       )}
@@ -199,6 +199,8 @@ export default function Home() {
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
         GEMINI&apos;S LAST MAN STANDING · one net, three shots, no excuses
+        <br />
+        Created by Samuel Bowater
       </footer>
     </div>
   );
@@ -251,28 +253,28 @@ function Hero({
       </div>
       <div className="flex justify-center gap-2.5 mt-5">
         <GhostButton onClick={onHowItWorks} className="px-4 py-2 text-[13px]">
-          How it works
+          📖 How it works
         </GhostButton>
         <GhostButton onClick={onFixtures} className="px-4 py-2 text-[13px]">
-          Fixtures
+          📅 Fixtures
         </GhostButton>
         <Link
           href="/standings"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
-          Standings
+          📊 Standings
         </Link>
         <Link
           href="/demo"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
-          Demo
+          🎮 Demo
         </Link>
         <Link
           href="/players/admin"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
-          Admin
+          🛠️ Admin
         </Link>
       </div>
     </div>
@@ -698,6 +700,7 @@ function PickForm({
     defender: me.pick?.defender || "",
   });
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
   const filled = Object.values(values).every((v) => v.trim().length > 0);
@@ -706,8 +709,25 @@ function PickForm({
   async function submit() {
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       await api("/api/picks", { method: "POST", body: JSON.stringify(values) });
+      onDone();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  async function clear() {
+    if (!confirm("Clear your picks for this gameweek? You'll need to pick again before the deadline.")) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      await api("/api/picks", { method: "DELETE" });
+      setValues({ forward: "", midfielder: "", defender: "" });
+      setNotice("Your picks have been cleared for this gameweek.");
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -772,9 +792,17 @@ function PickForm({
         })}
         <div className="px-5 py-4 bg-bg-deep flex flex-col items-end gap-2">
           {error && <div className="text-red text-[13px] self-stretch">{error}</div>}
-          <PrimaryButton disabled={!filled || busy} onClick={submit}>
-            {busy ? "Saving…" : me.pick ? "Update picks" : "Lock in picks"}
-          </PrimaryButton>
+          {notice && <div className="text-green-alive text-[13px] self-stretch">✅ {notice}</div>}
+          <div className="flex gap-2.5">
+            {me.pick && (
+              <DangerButton disabled={busy} onClick={clear}>
+                🗑️ Clear picks
+              </DangerButton>
+            )}
+            <PrimaryButton disabled={!filled || busy} onClick={submit}>
+              {busy ? "Saving…" : me.pick ? "✅ Update picks" : "🔒 Lock in picks"}
+            </PrimaryButton>
+          </div>
         </div>
       </div>
     </div>

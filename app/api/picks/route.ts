@@ -69,3 +69,33 @@ export const POST = withErrors(async (req: NextRequest) => {
 
   return NextResponse.json({ ok: true });
 });
+
+export const DELETE = withErrors(async () => {
+  await ensureSchema();
+  const participantId = await getCurrentParticipantId();
+  if (!participantId) {
+    return NextResponse.json({ error: "Not logged in." }, { status: 401 });
+  }
+
+  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season FROM game_state WHERE id = 1");
+  const gs = gsRows[0];
+  if (gs.phase !== "picking") {
+    return NextResponse.json({ error: "Picks aren't open right now." }, { status: 400 });
+  }
+
+  const { rows: fixtureRows } = await pool.query(
+    "SELECT kickoff FROM fixtures WHERE season = $1 AND gw = $2",
+    [gs.season, gs.current_gw]
+  );
+  const deadline = computePickDeadline(fixtureRows.map((f) => f.kickoff));
+  if (deadline && Date.now() >= new Date(deadline).getTime()) {
+    return NextResponse.json(
+      { error: "Picks have locked for this gameweek — kickoff is under an hour away." },
+      { status: 400 }
+    );
+  }
+
+  await pool.query("DELETE FROM picks WHERE gw = $1 AND participant_id = $2", [gs.current_gw, participantId]);
+
+  return NextResponse.json({ ok: true });
+});

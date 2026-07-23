@@ -121,7 +121,7 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
           className="font-mono tracking-[6px] text-center text-lg"
         />
         <PrimaryButton onClick={submit} disabled={busy}>
-          {busy ? "…" : "Log in"}
+          {busy ? "…" : "🔑 Log in"}
         </PrimaryButton>
       </div>
       {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
@@ -150,7 +150,7 @@ export default function Landing() {
           href="/admin"
           className="font-mono text-[11px] text-text-dim hover:text-accent"
         >
-          Admin →
+          🛠️ Admin →
         </Link>
       </div>
 
@@ -198,7 +198,7 @@ export default function Landing() {
                 refresh();
               }}
             >
-              Log out
+              🚪 Log out
             </GhostButton>
           </div>
 
@@ -235,6 +235,8 @@ export default function Landing() {
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
         GEMINI&apos;S LAST MAN STANDING · pick wisely, there&apos;s no going back
+        <br />
+        Created by Samuel Bowater
       </footer>
     </div>
   );
