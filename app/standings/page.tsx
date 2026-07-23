@@ -71,7 +71,7 @@ export default function StandingsPage() {
 
   return (
     <div className="max-w-[880px] mx-auto px-4 pb-24 pt-7">
-      <Link href="/" className="text-text-dim text-[12px] font-mono hover:text-accent">
+      <Link href="/players" className="text-text-dim text-[12px] font-mono hover:text-accent">
         ← Back to home
       </Link>
 

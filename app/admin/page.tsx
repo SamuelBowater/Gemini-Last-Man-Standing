@@ -91,7 +91,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
       </Panel>
       <div className="text-center">
-        <Link href="/" className="text-text-dim text-[12px] font-mono hover:text-accent">
+        <Link href="/players" className="text-text-dim text-[12px] font-mono hover:text-accent">
           ← Back to the pool
         </Link>
       </div>
@@ -179,7 +179,7 @@ function AdminDashboard() {
       <DangerZone onChange={refresh} />
 
       <div className="text-center mt-8">
-        <Link href="/" className="text-text-dim text-[11px] font-mono hover:text-accent">
+        <Link href="/players" className="text-text-dim text-[11px] font-mono hover:text-accent">
           ← Back to the pool
         </Link>
       </div>

@@ -195,7 +195,7 @@ export default function DemoPage() {
         This is a demo page with made-up players, scores and standings, showing roughly what
         the app looks like a few gameweeks into a season. It isn&apos;t connected to your real
         pool.{" "}
-        <Link href="/" className="underline font-semibold">
+        <Link href="/players" className="underline font-semibold">
           Back to the real thing →
         </Link>
       </div>
@@ -432,7 +432,7 @@ export default function DemoPage() {
       {alive.length === 0 && <EmptyNote>Everyone&apos;s out — the pool would end here.</EmptyNote>}
 
       <div className="text-center mt-8">
-        <Link href="/" className="text-text-dim text-[11px] font-mono hover:text-accent">
+        <Link href="/players" className="text-text-dim text-[11px] font-mono hover:text-accent">
           ← Back to the real app
         </Link>
       </div>
