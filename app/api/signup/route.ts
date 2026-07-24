@@ -9,6 +9,7 @@ export const POST = withErrors(async (req: NextRequest) => {
 
   const name = String(body.name || "").trim();
   const pin = String(body.pin || "").trim();
+  const inviteCode = String(body.inviteCode || "").trim();
   const canPlayPlayers = Boolean(body.canPlayPlayers);
   const canPlayTeams = Boolean(body.canPlayTeams);
 
@@ -20,6 +21,12 @@ export const POST = withErrors(async (req: NextRequest) => {
   }
   if (!canPlayPlayers && !canPlayTeams) {
     return NextResponse.json({ error: "Pick at least one pool to join." }, { status: 400 });
+  }
+
+  const { rows: gsRows } = await pool.query("SELECT signup_code AS \"signupCode\" FROM game_state WHERE id = 1");
+  const requiredCode = gsRows[0]?.signupCode;
+  if (!requiredCode || inviteCode !== requiredCode) {
+    return NextResponse.json({ error: "That invite code isn't right." }, { status: 400 });
   }
 
   const { rows: nameRows } = await pool.query(

@@ -47,9 +47,11 @@ export function ensureSchema(): Promise<void> {
         phase TEXT NOT NULL DEFAULT 'picking',
         season TEXT NOT NULL DEFAULT '2026-27',
         api_season TEXT NOT NULL DEFAULT '2026',
+        signup_code TEXT,
         CONSTRAINT single_row CHECK (id = 1)
       );
       INSERT INTO game_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+      ALTER TABLE game_state ADD COLUMN IF NOT EXISTS signup_code TEXT;
 
       CREATE TABLE IF NOT EXISTS participants (
         id SERIAL PRIMARY KEY,

@@ -170,6 +170,7 @@ function ToggleChip({
 function SignupPanel({ onSuccess }: { onSuccess: () => void }) {
   const [name, setName] = useState("");
   const [pin, setPin] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [playPlayers, setPlayPlayers] = useState(true);
   const [playTeams, setPlayTeams] = useState(true);
   const [error, setError] = useState("");
@@ -184,6 +185,10 @@ function SignupPanel({ onSuccess }: { onSuccess: () => void }) {
       setError("Choose a 4-digit PIN.");
       return;
     }
+    if (inviteCode.length !== 6) {
+      setError("Enter the 6-digit invite code you were given.");
+      return;
+    }
     if (!playPlayers && !playTeams) {
       setError("Pick at least one pool to join.");
       return;
@@ -196,6 +201,7 @@ function SignupPanel({ onSuccess }: { onSuccess: () => void }) {
         body: JSON.stringify({
           name: name.trim(),
           pin,
+          inviteCode,
           canPlayPlayers: playPlayers,
           canPlayTeams: playTeams,
         }),
@@ -210,7 +216,10 @@ function SignupPanel({ onSuccess }: { onSuccess: () => void }) {
   return (
     <Panel>
       <PanelTitle>Sign up</PanelTitle>
-      <Sub>Pick a name, choose your own 4-digit PIN, and join whichever pools you fancy.</Sub>
+      <Sub>
+        Pick a name, choose your own 4-digit PIN, enter the invite code you were given, and join
+        whichever pools you fancy.
+      </Sub>
       <div className="flex flex-col gap-2.5">
         <TextInput
           value={name}
@@ -223,6 +232,14 @@ function SignupPanel({ onSuccess }: { onSuccess: () => void }) {
           onChange={(e) => setPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="Choose a 4-digit PIN"
+          inputMode="numeric"
+          className="font-mono tracking-[6px] text-center text-lg"
+        />
+        <TextInput
+          value={inviteCode}
+          onChange={(e) => setInviteCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+          onKeyDown={(e) => e.key === "Enter" && submit()}
+          placeholder="6-digit invite code"
           inputMode="numeric"
           className="font-mono tracking-[6px] text-center text-lg"
         />

@@ -95,11 +95,16 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 
 function AdminDashboard() {
   const [players, setPlayers] = useState<AdminParticipant[]>([]);
+  const [signupCode, setSignupCode] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
-    const playersRes = await api("/api/admin/players");
+    const [playersRes, settingsRes] = await Promise.all([
+      api("/api/admin/players"),
+      api("/api/admin/settings"),
+    ]);
     setPlayers(playersRes.participants);
+    setSignupCode(settingsRes.signupCode);
   }, []);
 
   useEffect(() => {
@@ -139,6 +144,7 @@ function AdminDashboard() {
         </div>
       </div>
 
+      <SignupCodePanel signupCode={signupCode} onChange={refresh} />
       <PlayersPanel players={players} onChange={refresh} />
       <GamesPanel />
       <DangerZone onChange={refresh} />
@@ -149,6 +155,66 @@ function AdminDashboard() {
         </Link>
       </div>
     </div>
+  );
+}
+
+function SignupCodePanel({ signupCode, onChange }: { signupCode: string | null; onChange: () => void }) {
+  const [code, setCode] = useState(signupCode || "");
+  const [error, setError] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local input with fetched value
+    setCode(signupCode || "");
+  }, [signupCode]);
+
+  async function save() {
+    if (!/^\d{6}$/.test(code)) {
+      setError("Enter exactly 6 digits.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMsg("");
+    try {
+      await api("/api/admin/settings", { method: "POST", body: JSON.stringify({ signupCode: code }) });
+      setMsg("Saved.");
+      onChange();
+    } catch (e) {
+      setError((e as Error).message);
+    }
+    setBusy(false);
+  }
+
+  return (
+    <Panel>
+      <PanelTitle>Signup code</PanelTitle>
+      <Sub>
+        Give this 6-digit code to anyone you want to let sign themselves up on the home page — no
+        code, no signup.
+      </Sub>
+      <div className="flex gap-2.5">
+        <TextInput
+          value={code}
+          onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, "").slice(0, 6))}
+          onKeyDown={(e) => e.key === "Enter" && save()}
+          placeholder="123456"
+          inputMode="numeric"
+          className="font-mono tracking-[6px] text-center text-lg"
+        />
+        <PrimaryButton onClick={save} disabled={busy}>
+          Save
+        </PrimaryButton>
+      </div>
+      {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
+      {msg && <div className="text-text-dim text-[13px] mt-2.5">{msg}</div>}
+      {!signupCode && !error && (
+        <div className="text-[11.5px] text-red mt-2.5">
+          No code set yet — nobody can sign themselves up until you save one.
+        </div>
+      )}
+    </Panel>
   );
 }
 
