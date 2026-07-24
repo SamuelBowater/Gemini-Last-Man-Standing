@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, EmptyNote, LoadingScreen } from "@/components/ui";
 import { TEAMS } from "@/lib/data";
@@ -26,6 +26,23 @@ interface AdminFixture {
   away: string;
   kickoff: string | null;
   source: string;
+}
+
+function CollapsibleSection({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-5">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex justify-between items-center bg-panel border border-line rounded-2xl shadow-sm px-5 py-4 text-left"
+      >
+        <span className="text-[13px] font-semibold tracking-wide uppercase text-accent">{title}</span>
+        <span className="text-text-dim text-[12px]">{open ? "Hide ▲" : "Show ▾"}</span>
+      </button>
+      {open && <div className="mt-3">{children}</div>}
+    </div>
+  );
 }
 
 export default function PlayersAdminPage() {
@@ -162,15 +179,18 @@ function AdminDashboard() {
         </div>
       </Panel>
 
-      <FixturesSourcePanel gameState={gameState} syncStatus={syncStatus} onChange={refresh} />
-      <PlayerDataPanel />
-      <ManualFixturesPanel
-        fixtures={fixtures}
-        selectedGW={selectedGW}
-        setSelectedGW={setSelectedGW}
-        onChange={refresh}
-      />
       <ResultsPanel gameState={gameState} onChange={refresh} />
+
+      <CollapsibleSection title="⚙️ Fixtures & player data">
+        <FixturesSourcePanel gameState={gameState} syncStatus={syncStatus} onChange={refresh} />
+        <PlayerDataPanel />
+        <ManualFixturesPanel
+          fixtures={fixtures}
+          selectedGW={selectedGW}
+          setSelectedGW={setSelectedGW}
+          onChange={refresh}
+        />
+      </CollapsibleSection>
 
       <div className="text-center mt-8">
         <Link href="/players" className="text-text-dim text-[11px] font-mono hover:text-accent">
@@ -502,10 +522,16 @@ function ScorerPicker({
 function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number; phase: string }; onChange: () => void }) {
   const [players, setPlayers] = useState<LivePlayer[]>([]);
   const [scorers, setScorers] = useState<string[]>([]);
+  const [suggested, setSuggested] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestMsg, setSuggestMsg] = useState("");
+
+  const scorersRef = useRef<string[]>([]);
+  useEffect(() => {
+    scorersRef.current = scorers;
+  }, [scorers]);
 
   useEffect(() => {
     api("/api/players")
@@ -524,6 +550,7 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
   const fetchSuggestions = useCallback(async () => {
     setSuggestLoading(true);
     setSuggestMsg("");
+    setSuggested([]);
     try {
       const res = await api("/api/admin/suggested-scorers");
       if (!res.ok) {
@@ -531,18 +558,37 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
       } else if (res.scorers.length === 0) {
         setSuggestMsg("No goals recorded yet for this gameweek.");
       } else {
-        setScorers((old) => {
-          const existing = new Set(old.map((s: string) => s.toLowerCase()));
-          const added = res.scorers.filter((n: string) => !existing.has(n.toLowerCase()));
-          return [...old, ...added];
-        });
-        setSuggestMsg(`Auto-filled ${res.scorers.length} scorer${res.scorers.length === 1 ? "" : "s"} from live data — check before applying, add anyone missing, or remove anyone wrong.`);
+        const existing = new Set(scorersRef.current.map((s) => s.toLowerCase()));
+        const newOnes = res.scorers.filter((n: string) => !existing.has(n.toLowerCase()));
+        if (newOnes.length === 0) {
+          setSuggestMsg("Live data matches what you've already got.");
+        } else {
+          setSuggested(newOnes);
+          setSuggestMsg(
+            `Live data found ${newOnes.length} scorer${newOnes.length === 1 ? "" : "s"} you haven't added yet — add them?`
+          );
+        }
       }
     } catch (e) {
       setSuggestMsg((e as Error).message);
     }
     setSuggestLoading(false);
   }, []);
+
+  function acceptSuggested() {
+    setScorers((old) => {
+      const existing = new Set(old.map((s) => s.toLowerCase()));
+      const toAdd = suggested.filter((n) => !existing.has(n.toLowerCase()));
+      return [...old, ...toAdd];
+    });
+    setSuggested([]);
+    setSuggestMsg("Added.");
+  }
+
+  function dismissSuggested() {
+    setSuggested([]);
+    setSuggestMsg("");
+  }
 
   useEffect(() => {
     if (gameState.phase !== "finished") fetchSuggestions();
@@ -581,9 +627,8 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
     <Panel>
       <PanelTitle>Results · Gameweek {gameState.currentGW}</PanelTitle>
       <Sub>
-        Scorers are auto-filled from live match data below as boxes — check them, then add anyone
-        missing or remove anyone wrong before applying. Anyone whose all three picks are missing
-        from this list goes out.
+        Add scorers as boxes below, either by hand or by checking live match data. Anyone whose
+        all three picks are missing from this list goes out.
       </Sub>
       <div className="flex flex-wrap gap-2 mb-3">
         {scorers.length === 0 ? (
@@ -614,10 +659,25 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
           disabled={suggestLoading}
           className="text-[12px] text-accent hover:underline disabled:opacity-40"
         >
-          {suggestLoading ? "Checking live data…" : "🔮 Auto-fill from live data"}
+          {suggestLoading ? "Checking live data…" : "🔮 Check live data"}
         </button>
-        {suggestMsg && <div className="text-[11.5px] text-text-dim">{suggestMsg}</div>}
+        {suggested.length === 0 && suggestMsg && <div className="text-[11.5px] text-text-dim">{suggestMsg}</div>}
       </div>
+      {suggested.length > 0 && (
+        <div className="mt-2.5 bg-accent/10 border border-accent/30 rounded-lg px-3.5 py-3 flex items-center justify-between gap-3 flex-wrap">
+          <div className="text-[12.5px] text-text">
+            {suggestMsg} <span className="font-semibold">{suggested.join(", ")}</span>
+          </div>
+          <div className="flex gap-2">
+            <PrimaryButton className="px-3 py-1.5 text-[12px]" onClick={acceptSuggested}>
+              ✅ Yes, add them
+            </PrimaryButton>
+            <GhostButton className="px-3 py-1.5 text-[12px]" onClick={dismissSuggested}>
+              ✖ No, skip
+            </GhostButton>
+          </div>
+        </div>
+      )}
       <div className="mt-3">
         <PrimaryButton onClick={apply} disabled={busy}>
           {busy ? "Applying…" : `Apply results & advance`}
