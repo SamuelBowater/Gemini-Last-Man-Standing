@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, TextArea, EmptyNote, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, EmptyNote, LoadingScreen } from "@/components/ui";
 import { TEAMS } from "@/lib/data";
+import type { LivePlayer } from "@/lib/types";
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -436,14 +437,91 @@ function ManualFixturesPanel({
   );
 }
 
+function ScorerPicker({
+  candidates,
+  onAdd,
+}: {
+  candidates: LivePlayer[];
+  onAdd: (name: string) => void;
+}) {
+  const [value, setValue] = useState("");
+  const [open, setOpen] = useState(false);
+  const query = value.trim().toLowerCase();
+  const filtered = (
+    query ? candidates.filter((p) => p.name.toLowerCase().includes(query)) : candidates
+  ).slice(0, 8);
+
+  function addTyped() {
+    if (!value.trim()) return;
+    onAdd(value.trim());
+    setValue("");
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative">
+      <input
+        autoComplete="off"
+        placeholder="Type a scorer's name to add them…"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onKeyDown={(e) => e.key === "Enter" && addTyped()}
+        className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full bg-panel border border-line-strong rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          {filtered.map((p) => (
+            <button
+              key={p.name}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onAdd(p.name);
+                setValue("");
+                setOpen(false);
+              }}
+              className="w-full flex justify-between items-center gap-2 px-3.5 py-2.5 text-left hover:bg-bg-deep transition"
+            >
+              <span className="truncate">
+                <span className="font-medium">{p.name}</span>
+                {p.team && <span className="text-text-dim text-[12px]"> · {p.team}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number; phase: string }; onChange: () => void }) {
-  const [scorers, setScorers] = useState("");
+  const [players, setPlayers] = useState<LivePlayer[]>([]);
+  const [scorers, setScorers] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestMsg, setSuggestMsg] = useState("");
 
-  const fetchSuggestions = useCallback(async (fillIfEmpty: boolean) => {
+  useEffect(() => {
+    api("/api/players")
+      .then((d) => setPlayers(d.players))
+      .catch(() => {});
+  }, []);
+
+  function addScorer(name: string) {
+    setScorers((old) => (old.some((s) => s.toLowerCase() === name.toLowerCase()) ? old : [...old, name]));
+  }
+
+  function removeScorer(name: string) {
+    setScorers((old) => old.filter((s) => s !== name));
+  }
+
+  const fetchSuggestions = useCallback(async () => {
     setSuggestLoading(true);
     setSuggestMsg("");
     try {
@@ -453,20 +531,21 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
       } else if (res.scorers.length === 0) {
         setSuggestMsg("No goals recorded yet for this gameweek.");
       } else {
-        setSuggestMsg(`Suggested ${res.scorers.length} scorer${res.scorers.length === 1 ? "" : "s"} from live data — check before applying.`);
-        if (!fillIfEmpty || scorers.trim().length === 0) {
-          setScorers(res.scorers.join(", "));
-        }
+        setScorers((old) => {
+          const existing = new Set(old.map((s: string) => s.toLowerCase()));
+          const added = res.scorers.filter((n: string) => !existing.has(n.toLowerCase()));
+          return [...old, ...added];
+        });
+        setSuggestMsg(`Auto-filled ${res.scorers.length} scorer${res.scorers.length === 1 ? "" : "s"} from live data — check before applying, add anyone missing, or remove anyone wrong.`);
       }
     } catch (e) {
       setSuggestMsg((e as Error).message);
     }
     setSuggestLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (gameState.phase !== "finished") fetchSuggestions(true);
+    if (gameState.phase !== "finished") fetchSuggestions();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.currentGW]);
 
@@ -480,19 +559,15 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
   }
 
   async function apply() {
-    const list = scorers
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (list.length === 0 && !confirm("No scorers entered — this eliminates everyone who submitted picks. Continue?")) {
+    if (scorers.length === 0 && !confirm("No scorers entered — this eliminates everyone who submitted picks. Continue?")) {
       return;
     }
     setBusy(true);
     setMsg("");
     try {
-      const res = await api("/api/admin/results", { method: "POST", body: JSON.stringify({ scorers: list }) });
+      const res = await api("/api/admin/results", { method: "POST", body: JSON.stringify({ scorers }) });
       setMsg(`Applied. ${res.eliminated} eliminated. Now on ${res.phase === "finished" ? "finished" : `GW${res.currentGW}`}.`);
-      setScorers("");
+      setScorers([]);
       onChange();
     } catch (e) {
       setMsg((e as Error).message);
@@ -500,27 +575,46 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
     setBusy(false);
   }
 
+  const candidates = players.filter((p) => !scorers.some((s) => s.toLowerCase() === p.name.toLowerCase()));
+
   return (
     <Panel>
       <PanelTitle>Results · Gameweek {gameState.currentGW}</PanelTitle>
       <Sub>
-        Scorers are auto-suggested from live match data below — double check the list, then edit
-        or add anyone missing before applying. Anyone whose all three picks are missing from this
-        list goes out.
+        Scorers are auto-filled from live match data below as boxes — check them, then add anyone
+        missing or remove anyone wrong before applying. Anyone whose all three picks are missing
+        from this list goes out.
       </Sub>
-      <TextArea
-        value={scorers}
-        onChange={(e) => setScorers(e.target.value)}
-        placeholder="Erling Haaland, Cole Palmer, Virgil van Dijk"
-        rows={5}
-      />
+      <div className="flex flex-wrap gap-2 mb-3">
+        {scorers.length === 0 ? (
+          <EmptyNote>No scorers added yet.</EmptyNote>
+        ) : (
+          scorers.map((name) => (
+            <span
+              key={name}
+              className="inline-flex items-center gap-1.5 text-[13px] pl-3 pr-2 py-1.5 rounded-full bg-bg-deep border border-line-strong text-text"
+            >
+              ⚽ {name}
+              <button
+                type="button"
+                onClick={() => removeScorer(name)}
+                aria-label={`Remove ${name}`}
+                className="text-text-dim hover:text-red leading-none text-base"
+              >
+                ×
+              </button>
+            </span>
+          ))
+        )}
+      </div>
+      <ScorerPicker candidates={candidates} onAdd={addScorer} />
       <div className="flex items-center gap-3 mt-2.5">
         <button
-          onClick={() => fetchSuggestions(false)}
+          onClick={fetchSuggestions}
           disabled={suggestLoading}
           className="text-[12px] text-accent hover:underline disabled:opacity-40"
         >
-          {suggestLoading ? "Checking live data…" : "🔮 Refresh suggestions"}
+          {suggestLoading ? "Checking live data…" : "🔮 Auto-fill from live data"}
         </button>
         {suggestMsg && <div className="text-[11.5px] text-text-dim">{suggestMsg}</div>}
       </div>
