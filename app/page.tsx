@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, LoadingScreen, Modal } from "@/components/ui";
 import { ChangePinPanel } from "@/components/change-pin-panel";
-import type { StateResponse } from "@/lib/types";
+import type { StateResponse, Participant } from "@/lib/types";
 
 async function api(path: string, opts?: RequestInit) {
   const res = await fetch(path, {
@@ -97,12 +97,20 @@ function GameCard({
   );
 }
 
-function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
+function LoginPanel({ participants, onSuccess }: { participants: Participant[]; onSuccess: () => void }) {
+  const [selected, setSelected] = useState<Participant | null>(null);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  function selectParticipant(p: Participant) {
+    setSelected(p);
+    setCode("");
+    setError("");
+  }
+
   async function submit() {
+    if (!selected) return;
     if (code.length !== 4) {
       setError("Enter all 4 digits.");
       return;
@@ -110,7 +118,7 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
     setBusy(true);
     setError("");
     try {
-      await api("/api/login", { method: "POST", body: JSON.stringify({ code }) });
+      await api("/api/login", { method: "POST", body: JSON.stringify({ participantId: selected.id, code }) });
       onSuccess();
     } catch (e) {
       setError((e as Error).message);
@@ -118,10 +126,37 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
     setBusy(false);
   }
 
+  if (!selected) {
+    return (
+      <Panel>
+        <PanelTitle>Log in</PanelTitle>
+        {participants.length === 0 ? (
+          <Sub>No players yet — head to /admin or sign up above to add the first one.</Sub>
+        ) : (
+          <>
+            <Sub>Tap your name to log in.</Sub>
+            <div className="flex flex-wrap gap-2">
+              {participants.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => selectParticipant(p)}
+                  className="px-4 py-2.5 rounded-xl border border-line-strong bg-bg-deep text-text text-[14px] font-semibold hover:border-accent hover:text-accent transition"
+                >
+                  {p.name}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </Panel>
+    );
+  }
+
   return (
     <Panel>
-      <PanelTitle>Log in</PanelTitle>
-      <Sub>Enter your 4-digit PIN to see which pools you can join.</Sub>
+      <PanelTitle>Log in as {selected.name}</PanelTitle>
+      <Sub>Enter your 4-digit PIN.</Sub>
       <div className="flex gap-2.5">
         <TextInput
           value={code}
@@ -129,6 +164,7 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="0000"
           inputMode="numeric"
+          autoFocus
           className="font-mono tracking-[6px] text-center text-lg"
         />
         <PrimaryButton onClick={submit} disabled={busy}>
@@ -136,6 +172,13 @@ function LoginPanel({ onSuccess }: { onSuccess: () => void }) {
         </PrimaryButton>
       </div>
       {error && <div className="text-red text-[13px] mt-2.5">{error}</div>}
+      <button
+        type="button"
+        onClick={() => setSelected(null)}
+        className="text-text-dim text-[12px] font-mono hover:text-accent mt-3"
+      >
+        ← Not you?
+      </button>
     </Panel>
   );
 }
@@ -257,7 +300,7 @@ function SignupPanel({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
+function AuthPanel({ participants, onSuccess }: { participants: Participant[]; onSuccess: () => void }) {
   const [tab, setTab] = useState<"login" | "signup">("login");
 
   return (
@@ -275,7 +318,11 @@ function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
           </button>
         ))}
       </div>
-      {tab === "signup" ? <SignupPanel onSuccess={onSuccess} /> : <LoginPanel onSuccess={onSuccess} />}
+      {tab === "signup" ? (
+        <SignupPanel onSuccess={onSuccess} />
+      ) : (
+        <LoginPanel participants={participants} onSuccess={onSuccess} />
+      )}
     </div>
   );
 }
@@ -323,7 +370,7 @@ export default function Landing() {
           Couldn&apos;t load the pool. Refresh to try again.
         </div>
       ) : !state.me ? (
-        <AuthPanel onSuccess={refresh} />
+        <AuthPanel participants={state.participants} onSuccess={refresh} />
       ) : (
         <>
           <div className="flex justify-between items-center mb-5 text-[13px] text-text-dim">

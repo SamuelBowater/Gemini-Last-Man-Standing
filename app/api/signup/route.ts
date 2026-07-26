@@ -37,25 +37,12 @@ export const POST = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ error: "That name's already taken — try another." }, { status: 400 });
   }
 
-  const { rows: pinRows } = await pool.query("SELECT 1 FROM participants WHERE code = $1", [pin]);
-  if (pinRows.length > 0) {
-    return NextResponse.json({ error: "That PIN's already taken — pick another." }, { status: 400 });
-  }
-
-  let rows;
-  try {
-    ({ rows } = await pool.query(
-      `INSERT INTO participants (name, code, can_play_players, can_play_teams)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name`,
-      [name, pin, canPlayPlayers, canPlayTeams]
-    ));
-  } catch (err) {
-    if (err instanceof Error && "code" in err && err.code === "23505") {
-      return NextResponse.json({ error: "That PIN's already taken — pick another." }, { status: 400 });
-    }
-    throw err;
-  }
+  const { rows } = await pool.query(
+    `INSERT INTO participants (name, code, can_play_players, can_play_teams)
+     VALUES ($1, $2, $3, $4)
+     RETURNING id, name`,
+    [name, pin, canPlayPlayers, canPlayTeams]
+  );
 
   await createParticipantSession(rows[0].id);
   return NextResponse.json({ ok: true, name: rows[0].name });

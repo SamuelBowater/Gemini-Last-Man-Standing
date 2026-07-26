@@ -23,14 +23,7 @@ export const POST = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ error: "That's not your current PIN." }, { status: 400 });
   }
 
-  try {
-    await pool.query("UPDATE participants SET code = $1 WHERE id = $2", [newPin, participantId]);
-  } catch (err) {
-    if (err instanceof Error && "code" in err && err.code === "23505") {
-      return NextResponse.json({ error: "That PIN's already taken — pick another." }, { status: 400 });
-    }
-    throw err;
-  }
+  await pool.query("UPDATE participants SET code = $1 WHERE id = $2", [newPin, participantId]);
 
   return NextResponse.json({ ok: true });
 });

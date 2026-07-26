@@ -69,6 +69,7 @@ export function ensureSchema(): Promise<void> {
       ALTER TABLE participants ADD COLUMN IF NOT EXISTS can_play_teams BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE participants ADD COLUMN IF NOT EXISTS team_status TEXT NOT NULL DEFAULT 'alive';
       ALTER TABLE participants ADD COLUMN IF NOT EXISTS team_eliminated_gw INTEGER;
+      ALTER TABLE participants DROP CONSTRAINT IF EXISTS participants_code_key;
 
       CREATE TABLE IF NOT EXISTS sessions (
         token TEXT PRIMARY KEY,
