@@ -197,6 +197,9 @@ export default function DemoPage() {
         pool.{" "}
         <Link href="/players" className="underline font-semibold">
           Back to the real thing →
+        </Link>{" "}
+        <Link href="/demo/teams" className="underline font-semibold">
+          Or see the Team Survival demo →
         </Link>
       </div>
 

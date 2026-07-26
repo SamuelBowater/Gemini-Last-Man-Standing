@@ -1,78 +1,32 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Badge, EmptyNote } from "@/components/ui";
 import { TeamBadge } from "@/components/team-badge";
-import type { TeamGameweekReport, TeamTopPick } from "@/lib/team-types";
-
-async function api(path: string) {
-  const res = await fetch(path);
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || "Something went wrong.");
-  return data;
-}
+import { CURRENT_GW, buildTeamReport, type DemoTeamTopPick } from "@/lib/demoTeamData";
 
 function titleCase(s: string): string {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function toCSV(report: TeamGameweekReport): string {
-  const header = ["Player", "Team", "Result", "Status"];
-  const lines = report.rows.map((r) => [
-    r.name,
-    r.team || "",
-    r.result || "",
-    r.overallStatus === "eliminated" ? "Eliminated" : "Active",
-  ]);
-  return [header, ...lines].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
-}
-
-function downloadCSV(report: TeamGameweekReport) {
-  const blob = new Blob([toCSV(report)], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `team-survival-gameweek-${report.gw}-selections.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-export default function TeamStandingsPage() {
-  const [report, setReport] = useState<TeamGameweekReport | null>(null);
-  const [gw, setGw] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
+export default function DemoTeamStandingsPage() {
+  const [gw, setGw] = useState(CURRENT_GW);
   const [tab, setTab] = useState<"selections" | "topPicks">("selections");
-
-  const load = useCallback((targetGw?: number) => {
-    return api(`/api/team-gameweek${targetGw ? `?gw=${targetGw}` : ""}`).then((data: TeamGameweekReport) => {
-      setReport(data);
-      setGw(data.gw);
-    });
-  }, []);
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
-    load().finally(() => setLoading(false));
-  }, [load]);
-
-  function changeGW(newGw: number) {
-    setLoading(true);
-    load(newGw).finally(() => setLoading(false));
-  }
-
-  if (loading || !report || gw === null) {
-    return (
-      <div className="max-w-[880px] mx-auto px-4">
-        <LoadingScreen label="Loading standings…" />
-      </div>
-    );
-  }
+  const report = buildTeamReport(gw);
 
   return (
     <div className="max-w-[880px] mx-auto px-4 pb-24 pt-7">
-      <Link href="/teams" className="text-text-dim text-[12px] font-mono hover:text-accent">
-        ← Back to Team Survival
+      <div className="bg-accent-soft border border-accent/30 text-accent rounded-xl px-4 py-3 mb-6 text-[13px] text-center">
+        This is a demo page with made-up players, scores and standings. It isn&apos;t connected to
+        your real pool.{" "}
+        <Link href="/demo/teams" className="underline font-semibold">
+          Back to the demo home →
+        </Link>
+      </div>
+
+      <Link href="/demo/teams" className="text-text-dim text-[12px] font-mono hover:text-accent">
+        ← Back to demo home
       </Link>
 
       <h1 className="font-display text-[36px] mt-4 mb-6 text-text">Standings</h1>
@@ -101,25 +55,17 @@ export default function TeamStandingsPage() {
             </div>
             <select
               value={gw}
-              onChange={(e) => changeGW(Number(e.target.value))}
+              onChange={(e) => setGw(Number(e.target.value))}
               className="bg-bg-deep border border-line-strong text-text text-[13px] font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-accent"
             >
-              {Array.from({ length: report.currentGW }, (_, i) => i + 1).map((n) => (
+              {Array.from({ length: CURRENT_GW }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
                   Gameweek {n}
-                  {n === report.currentGW ? " (Current)" : ""}
+                  {n === CURRENT_GW ? " (Current)" : ""}
                 </option>
               ))}
             </select>
           </div>
-          {report.resolved && (
-            <button
-              onClick={() => downloadCSV(report)}
-              className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition"
-            >
-              Download CSV
-            </button>
-          )}
         </div>
 
         <div className="inline-flex mb-4 border border-line-strong rounded-lg overflow-hidden">
@@ -146,8 +92,8 @@ export default function TeamStandingsPage() {
                 </>
               ) : (
                 <>
-                  Gameweek {gw} hasn&apos;t been resolved yet — picks stay hidden until the
-                  admin logs results, to keep things fair.
+                  Gameweek {gw} hasn&apos;t been resolved yet — picks stay hidden until the admin
+                  logs results, to keep things fair.
                 </>
               )}
             </div>
@@ -162,9 +108,21 @@ export default function TeamStandingsPage() {
                 </thead>
                 <tbody>
                   {report.rows.map((r) => (
-                    <tr key={r.id} className="border-b border-line">
+                    <tr key={r.name} className="border-b border-line">
                       <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">{r.name}</td>
-                      <PickCell resolved={report.resolved} team={r.team} result={r.result} submitted={r.submitted} />
+                      <td className="py-2.5 pr-3 whitespace-nowrap">
+                        {!report.resolved ? (
+                          <span className="text-text-dim">{r.submitted ? "🔒 Submitted" : "-"}</span>
+                        ) : r.team ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <TeamBadge team={r.team} size={18} />
+                            {r.team}
+                            {r.result === "win" ? " ✓" : r.result === "draw" ? " (draw)" : r.result === "loss" ? " (lost)" : ""}
+                          </span>
+                        ) : (
+                          <span className="text-text-dim">-</span>
+                        )}
+                      </td>
                       <td className="py-2.5">
                         <Badge tone={r.overallStatus === "eliminated" ? "out" : "alive"}>
                           {r.overallStatus === "eliminated" ? "Eliminated" : "Active"}
@@ -182,47 +140,14 @@ export default function TeamStandingsPage() {
           (report.resolved && report.topPicks ? (
             <TopPickList picks={report.topPicks} />
           ) : (
-            <EmptyNote>
-              Most picked teams reveal once gameweek {gw} is resolved by the admin.
-            </EmptyNote>
+            <EmptyNote>Most picked teams reveal once gameweek {gw} is resolved by the admin.</EmptyNote>
           ))}
       </Panel>
     </div>
   );
 }
 
-function PickCell({
-  resolved,
-  team,
-  result,
-  submitted,
-}: {
-  resolved: boolean;
-  team: string | null;
-  result: TeamGameweekReport["rows"][number]["result"];
-  submitted: boolean;
-}) {
-  if (!resolved) {
-    return (
-      <td className="py-2.5 pr-3 whitespace-nowrap text-text-dim">{submitted ? "🔒 Submitted" : "-"}</td>
-    );
-  }
-  if (!team) {
-    return <td className="py-2.5 pr-3 whitespace-nowrap text-text-dim">-</td>;
-  }
-  const suffix = result === "win" ? " ✓" : result === "draw" ? " (draw)" : result === "loss" ? " (lost)" : "";
-  return (
-    <td className="py-2.5 pr-3 whitespace-nowrap">
-      <span className="inline-flex items-center gap-1.5">
-        <TeamBadge team={team} size={18} />
-        {team}
-        {suffix}
-      </span>
-    </td>
-  );
-}
-
-function TopPickList({ picks }: { picks: TeamTopPick[] }) {
+function TopPickList({ picks }: { picks: DemoTeamTopPick[] }) {
   if (picks.length === 0) {
     return <div className="text-[12.5px] text-text-dim">No picks recorded.</div>;
   }

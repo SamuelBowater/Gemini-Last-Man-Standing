@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Sub, GhostButton, DangerButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
+import { TeamBadge } from "@/components/team-badge";
 import type { Fixture, Participant } from "@/lib/types";
 import type { TeamStateResponse, TeamMe, TeamGameState, TeamPickHistoryEntry } from "@/lib/team-types";
 
@@ -390,8 +391,11 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
         <div className="flex flex-col gap-2">
           {fixtures.map((f, i) => (
             <div key={i} className="bg-bg-deep border border-line rounded-xl px-3.5 py-3">
-              <div className="font-semibold">
-                {f.home} <span className="text-text-dim font-normal">v</span> {f.away}
+              <div className="font-semibold flex items-center gap-1.5">
+                <TeamBadge team={f.home} size={20} />
+                {f.home} <span className="text-text-dim font-normal">v</span>
+                <TeamBadge team={f.away} size={20} />
+                {f.away}
               </div>
               <FixtureStatusLine fixture={f} />
             </div>
@@ -447,7 +451,8 @@ function PickZone({
         <Panel>
           <PanelTitle>Pick locked — GW{gameState.currentGW}</PanelTitle>
           <div className="flex gap-2 flex-wrap">
-            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+            <span className="flex items-center gap-1.5 text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+              <TeamBadge team={me.pick.team} size={18} />
               {me.pick.team}
             </span>
           </div>
@@ -484,7 +489,10 @@ function PickHistoryPanel({ history }: { history: TeamPickHistoryEntry[] }) {
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-text-dim mb-1">
                   Gameweek {h.gw}
                 </div>
-                <div className="font-semibold">{h.team}</div>
+                <div className="font-semibold flex items-center gap-1.5">
+                  <TeamBadge team={h.team} size={20} />
+                  {h.team}
+                </div>
               </div>
               <ResultBadge result={h.result} />
             </div>
@@ -570,7 +578,7 @@ function TeamPickForm({
           )}
         </Sub>
       </div>
-      <div className="bg-bg-deep px-5 pb-5">
+      <div className="bg-bg-deep px-5 pt-4 pb-5">
         {candidates.length === 0 ? (
           <EmptyNote>No fixtures synced for this gameweek yet — check back soon.</EmptyNote>
         ) : (
@@ -583,14 +591,15 @@ function TeamPickForm({
                   type="button"
                   disabled={busy}
                   onClick={() => submit(team)}
-                  className={`px-3 py-3 rounded-xl border text-[13px] font-semibold text-center transition ${
+                  className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border text-[13px] font-semibold text-center transition ${
                     selected
                       ? "bg-accent/10 border-accent text-accent"
                       : "bg-panel border-line-strong text-text hover:border-accent/40"
                   }`}
                 >
-                  {team}
-                  {selected && <span className="block text-[10px] mt-0.5">✓ Locked in</span>}
+                  <TeamBadge team={team} />
+                  <span>{team}</span>
+                  {selected && <span className="block text-[10px] -mt-1">✓ Locked in</span>}
                 </button>
               );
             })}

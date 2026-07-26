@@ -132,6 +132,12 @@ function AdminDashboard() {
           >
             🎮 Demo
           </Link>
+          <Link
+            href="/demo/teams"
+            className="font-semibold text-sm rounded-xl px-3 py-1.5 text-[11px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
+          >
+            🎮 Team Demo
+          </Link>
           <GhostButton
             className="text-[11px] px-3 py-1.5"
             onClick={async () => {

@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, type ReactNode } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, EmptyNote, LoadingScreen } from "@/components/ui";
+import { TeamBadge } from "@/components/team-badge";
 import { TEAMS } from "@/lib/data";
 
 function wait(ms: number) {
@@ -472,12 +473,13 @@ function TeamToggle({
       type="button"
       disabled={!enabled}
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg border text-[12.5px] font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed ${
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[12.5px] font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed ${
         selected
           ? "bg-green-alive/10 border-green-alive/30 text-green-alive"
           : "bg-panel border-line-strong text-text hover:border-accent/40"
       }`}
     >
+      <TeamBadge team={team} size={18} />
       {team}
       {selected && " ✓"}
     </button>
