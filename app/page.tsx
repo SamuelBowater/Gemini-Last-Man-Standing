@@ -365,8 +365,8 @@ export default function Landing() {
                 "A draw or a loss knocks you out",
               ]}
               href="/teams"
-              cta="Coming soon"
-              comingSoon
+              cta="Play Team Survival"
+              lockedLabel={state.me.canPlayTeams ? undefined : "Not in this pool"}
             />
           </div>
         </>

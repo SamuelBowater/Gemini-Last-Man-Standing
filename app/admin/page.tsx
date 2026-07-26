@@ -332,10 +332,13 @@ function GamesPanel() {
           <span className="font-semibold">Player Picks admin</span>
           <span className="text-accent text-[12px] font-semibold">→</span>
         </Link>
-        <div className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 opacity-60">
+        <Link
+          href="/teams/admin"
+          className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 hover:border-accent transition"
+        >
           <span className="font-semibold">Team Survival admin</span>
-          <span className="text-text-dim text-[11px] font-mono">Coming soon</span>
-        </div>
+          <span className="text-accent text-[12px] font-semibold">→</span>
+        </Link>
       </div>
     </Panel>
   );

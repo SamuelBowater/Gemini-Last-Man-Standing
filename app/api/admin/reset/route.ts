@@ -7,8 +7,11 @@ export const POST = withErrors(async () => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
 
-  await pool.query("TRUNCATE picks, results, sessions, participants RESTART IDENTITY CASCADE");
+  await pool.query(
+    "TRUNCATE picks, results, team_picks, team_results, sessions, participants RESTART IDENTITY CASCADE"
+  );
   await pool.query("UPDATE game_state SET current_gw = 1, phase = 'picking' WHERE id = 1");
+  await pool.query("UPDATE team_state SET current_gw = 1, phase = 'picking' WHERE id = 1");
 
   return NextResponse.json({ ok: true });
 });

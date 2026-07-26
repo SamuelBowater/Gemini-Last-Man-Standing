@@ -61,10 +61,14 @@ export function ensureSchema(): Promise<void> {
         eliminated_gw INTEGER,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         can_play_players BOOLEAN NOT NULL DEFAULT true,
-        can_play_teams BOOLEAN NOT NULL DEFAULT true
+        can_play_teams BOOLEAN NOT NULL DEFAULT true,
+        team_status TEXT NOT NULL DEFAULT 'alive',
+        team_eliminated_gw INTEGER
       );
       ALTER TABLE participants ADD COLUMN IF NOT EXISTS can_play_players BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE participants ADD COLUMN IF NOT EXISTS can_play_teams BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS team_status TEXT NOT NULL DEFAULT 'alive';
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS team_eliminated_gw INTEGER;
 
       CREATE TABLE IF NOT EXISTS sessions (
         token TEXT PRIMARY KEY,
@@ -133,6 +137,30 @@ export function ensureSchema(): Promise<void> {
         CONSTRAINT single_row_players CHECK (id = 1)
       );
       INSERT INTO player_sync_meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS team_state (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        current_gw INTEGER NOT NULL DEFAULT 1,
+        phase TEXT NOT NULL DEFAULT 'picking',
+        season TEXT NOT NULL DEFAULT '2026-27',
+        CONSTRAINT single_row_team_state CHECK (id = 1)
+      );
+      INSERT INTO team_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS team_picks (
+        id SERIAL PRIMARY KEY,
+        gw INTEGER NOT NULL,
+        participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+        team TEXT NOT NULL,
+        submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (gw, participant_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS team_results (
+        gw INTEGER PRIMARY KEY,
+        winning_teams JSONB NOT NULL DEFAULT '[]',
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
     `)
       .then(() => undefined)
       .catch((err) => {
