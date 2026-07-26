@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, LoadingScreen, Modal } from "@/components/ui";
+import { ChangePinPanel } from "@/components/change-pin-panel";
 import type { StateResponse } from "@/lib/types";
 
 async function api(path: string, opts?: RequestInit) {
@@ -282,6 +283,7 @@ function AuthPanel({ onSuccess }: { onSuccess: () => void }) {
 export default function Landing() {
   const [state, setState] = useState<StateResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await api("/api/state");
@@ -328,16 +330,25 @@ export default function Landing() {
             <span>
               Logged in as <strong className="text-text">{state.me.name}</strong>
             </span>
-            <GhostButton
-              className="px-3 py-1.5 text-[11px]"
-              onClick={async () => {
-                await api("/api/logout", { method: "POST" });
-                refresh();
-              }}
-            >
-              🚪 Log out
-            </GhostButton>
+            <div className="flex items-center gap-2">
+              <GhostButton className="px-3 py-1.5 text-[11px]" onClick={() => setPinModalOpen(true)}>
+                🔑 Change PIN
+              </GhostButton>
+              <GhostButton
+                className="px-3 py-1.5 text-[11px]"
+                onClick={async () => {
+                  await api("/api/logout", { method: "POST" });
+                  refresh();
+                }}
+              >
+                🚪 Log out
+              </GhostButton>
+            </div>
           </div>
+
+          <Modal open={pinModalOpen} onClose={() => setPinModalOpen(false)}>
+            <ChangePinPanel onClose={() => setPinModalOpen(false)} />
+          </Modal>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <GameCard

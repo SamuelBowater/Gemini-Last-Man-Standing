@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Sub, GhostButton, DangerButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { TeamBadge } from "@/components/team-badge";
+import { ChangePinPanel } from "@/components/change-pin-panel";
 import type { Fixture, Participant } from "@/lib/types";
 import type { TeamStateResponse, TeamMe, TeamGameState, TeamPickHistoryEntry } from "@/lib/team-types";
 
@@ -58,6 +59,7 @@ export default function TeamSurvival() {
   const [loading, setLoading] = useState(true);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [fixturesOpen, setFixturesOpen] = useState(false);
+  const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     const data = await api("/api/team-state");
@@ -111,17 +113,26 @@ export default function TeamSurvival() {
           <span>
             Logged in as <strong className="text-text">{me.name}</strong>
           </span>
-          <GhostButton
-            className="px-3 py-1.5 text-[11px]"
-            onClick={async () => {
-              await api("/api/logout", { method: "POST" });
-              refresh();
-            }}
-          >
-            🚪 Log out
-          </GhostButton>
+          <div className="flex items-center gap-2">
+            <GhostButton className="px-3 py-1.5 text-[11px]" onClick={() => setPinModalOpen(true)}>
+              🔑 Change PIN
+            </GhostButton>
+            <GhostButton
+              className="px-3 py-1.5 text-[11px]"
+              onClick={async () => {
+                await api("/api/logout", { method: "POST" });
+                refresh();
+              }}
+            >
+              🚪 Log out
+            </GhostButton>
+          </div>
         </div>
       )}
+
+      <Modal open={pinModalOpen} onClose={() => setPinModalOpen(false)}>
+        <ChangePinPanel onClose={() => setPinModalOpen(false)} />
+      </Modal>
 
       {gameState.phase === "finished" && <WinnerBanner alive={alive} gw={gameState.currentGW} />}
 
