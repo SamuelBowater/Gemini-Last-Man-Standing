@@ -135,13 +135,13 @@ function LoginPanel({ participants, onSuccess }: { participants: Participant[]; 
         ) : (
           <>
             <Sub>Tap your name to log in.</Sub>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-1.5 max-h-[280px] overflow-y-auto pr-1">
               {participants.map((p) => (
                 <button
                   key={p.id}
                   type="button"
                   onClick={() => selectParticipant(p)}
-                  className="px-4 py-2.5 rounded-xl border border-line-strong bg-bg-deep text-text text-[14px] font-semibold hover:border-accent hover:text-accent transition"
+                  className="w-full text-left px-4 py-2.5 rounded-xl border border-line-strong bg-bg-deep text-text text-[14px] font-semibold hover:border-accent hover:text-accent transition"
                 >
                   {p.name}
                 </button>
