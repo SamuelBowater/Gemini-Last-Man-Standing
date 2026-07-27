@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, EmptyNote, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, PasswordInput, EmptyNote, LoadingScreen } from "@/components/ui";
 import { TEAMS } from "@/lib/data";
 import type { LivePlayer } from "@/lib/types";
 
@@ -88,8 +88,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         <PanelTitle>Admin login</PanelTitle>
         <Sub>Enter the admin passcode set in your environment (ADMIN_PASSCODE).</Sub>
         <div className="flex gap-2.5">
-          <TextInput
-            type="password"
+          <PasswordInput
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}

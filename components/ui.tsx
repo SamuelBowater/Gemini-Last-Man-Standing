@@ -1,4 +1,6 @@
-import { ReactNode } from "react";
+"use client";
+
+import { ReactNode, useState } from "react";
 
 export function Panel({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
@@ -57,6 +59,29 @@ export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
       {...rest}
       className={`flex-1 bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-xl px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft ${className}`}
     />
+  );
+}
+
+export function PasswordInput(props: Omit<React.InputHTMLAttributes<HTMLInputElement>, "type">) {
+  const [visible, setVisible] = useState(false);
+  const { className = "", ...rest } = props;
+  return (
+    <div className="relative flex-1">
+      <input
+        {...rest}
+        type={visible ? "text" : "password"}
+        className={`w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-xl pl-3.5 pr-11 py-3 text-[15px] focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent-soft ${className}`}
+      />
+      <button
+        type="button"
+        tabIndex={-1}
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        className="absolute right-1.5 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-text-dim hover:text-accent rounded-lg leading-none text-base"
+      >
+        {visible ? "🙈" : "👁️"}
+      </button>
+    </div>
   );
 }
 

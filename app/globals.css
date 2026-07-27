@@ -49,3 +49,10 @@ body {
 input::placeholder {
   color: #9fb3ab;
 }
+
+/* We render our own show/hide toggle on password fields — hide the browser's
+   built-in ones so there's never a duplicate. */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}

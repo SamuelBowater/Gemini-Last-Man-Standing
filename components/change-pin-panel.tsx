@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PanelTitle, Sub, PrimaryButton, TextInput } from "@/components/ui";
+import { PanelTitle, Sub, PrimaryButton, PasswordInput } from "@/components/ui";
 
 async function api(path: string, opts?: RequestInit) {
   const res = await fetch(path, {
@@ -60,29 +60,26 @@ export function ChangePinPanel({ onClose }: { onClose: () => void }) {
       <PanelTitle>Change your PIN</PanelTitle>
       <Sub>Enter your current PIN and choose a new 4-digit one.</Sub>
       <div className="flex flex-col gap-2.5">
-        <TextInput
+        <PasswordInput
           value={currentPin}
           onChange={(e) => setCurrentPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
           placeholder="Current PIN"
           inputMode="numeric"
-          type="password"
           className="font-mono tracking-[6px] text-center text-lg"
         />
-        <TextInput
+        <PasswordInput
           value={newPin}
           onChange={(e) => setNewPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
           placeholder="New PIN"
           inputMode="numeric"
-          type="password"
           className="font-mono tracking-[6px] text-center text-lg"
         />
-        <TextInput
+        <PasswordInput
           value={confirmPin}
           onChange={(e) => setConfirmPin(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
           onKeyDown={(e) => e.key === "Enter" && submit()}
           placeholder="Confirm new PIN"
           inputMode="numeric"
-          type="password"
           className="font-mono tracking-[6px] text-center text-lg"
         />
         <PrimaryButton onClick={submit} disabled={busy}>

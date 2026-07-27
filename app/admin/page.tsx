@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, TextInput, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, TextInput, PasswordInput, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
 
 function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -71,8 +71,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
         <PanelTitle>Admin login</PanelTitle>
         <Sub>Enter the admin passcode set in your environment (ADMIN_PASSCODE).</Sub>
         <div className="flex gap-2.5">
-          <TextInput
-            type="password"
+          <PasswordInput
             value={passcode}
             onChange={(e) => setPasscode(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
