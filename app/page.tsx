@@ -28,8 +28,8 @@ function GameCard({
   rules,
   href,
   cta,
-  comingSoon = false,
-  lockedLabel,
+  disabledLabel,
+  noticeLabel,
 }: {
   icon: string;
   eyebrow: string;
@@ -38,11 +38,11 @@ function GameCard({
   rules: string[];
   href: string;
   cta: string;
-  comingSoon?: boolean;
-  lockedLabel?: string;
+  disabledLabel?: string;
+  noticeLabel?: string;
 }) {
-  const disabled = comingSoon || !!lockedLabel;
-  const badgeLabel = lockedLabel || (comingSoon ? "Coming soon" : null);
+  const disabled = !!disabledLabel;
+  const badgeLabel = disabledLabel || noticeLabel || null;
   const cardClassName = `group flex flex-col bg-panel border border-line rounded-2xl shadow-sm p-6 transition ${
     disabled ? "opacity-70" : "hover:border-accent hover:shadow-lg hover:-translate-y-1"
   }`;
@@ -329,12 +329,14 @@ function AuthPanel({ participants, onSuccess }: { participants: Participant[]; o
 
 export default function Landing() {
   const [state, setState] = useState<StateResponse | null>(null);
+  const [teamsLocked, setTeamsLocked] = useState(true);
   const [loading, setLoading] = useState(true);
   const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
-    const data = await api("/api/state");
+    const [data, teamData] = await Promise.all([api("/api/state"), api("/api/team-state")]);
     setState(data);
+    setTeamsLocked(teamData.gameState.locked);
   }, []);
 
   useEffect(() => {
@@ -414,6 +416,43 @@ export default function Landing() {
             <ChangePinPanel onClose={() => setPinModalOpen(false)} />
           </Modal>
 
+          <div className="mb-3 font-mono text-[12px] tracking-[2px] uppercase text-accent">
+            🏴 Scottish Premiership — Trial Weekend
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+            <GameCard
+              icon="⚽"
+              eyebrow="Trial · Player Picks"
+              title="Forward, Mid & Def"
+              description="Pick a forward, a midfielder and a defender every gameweek — one of them has to find the net or you're out."
+              rules={[
+                "One player per position, every gameweek",
+                "Each player can only be used once all trial",
+                "Survive as long as one of your three scores",
+              ]}
+              href="/scottish/players"
+              cta="Play Player Picks"
+              disabledLabel={state.me.canPlayScotPlayers === false ? "Not in this pool" : undefined}
+            />
+            <GameCard
+              icon="🛡️"
+              eyebrow="Trial · Team Survival"
+              title="Pick a Team"
+              description="Pick one Scottish Premiership team each gameweek — if they win, you go through. If they lose, you're out."
+              rules={[
+                "One team per gameweek, win and you survive",
+                "Each team can only be picked once all trial",
+                "A draw or a loss knocks you out",
+              ]}
+              href="/scottish/teams"
+              cta="Play Team Survival"
+              disabledLabel={state.me.canPlayScotTeams === false ? "Not in this pool" : undefined}
+            />
+          </div>
+
+          <div className="mb-3 font-mono text-[12px] tracking-[2px] uppercase text-accent">
+            ⚽ Premier League — Main Season
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <GameCard
               icon="⚽"
@@ -427,7 +466,8 @@ export default function Landing() {
               ]}
               href="/players"
               cta="Play Player Picks"
-              lockedLabel={state.me.canPlayPlayers ? undefined : "Not in this pool"}
+              disabledLabel={!state.me.canPlayPlayers ? "Not in this pool" : undefined}
+              noticeLabel={state.me.canPlayPlayers && state.gameState.locked ? "🔒 Not open yet" : undefined}
             />
             <GameCard
               icon="🛡️"
@@ -441,7 +481,8 @@ export default function Landing() {
               ]}
               href="/teams"
               cta="Play Team Survival"
-              lockedLabel={state.me.canPlayTeams ? undefined : "Not in this pool"}
+              disabledLabel={!state.me.canPlayTeams ? "Not in this pool" : undefined}
+              noticeLabel={state.me.canPlayTeams && teamsLocked ? "🔒 Not open yet" : undefined}
             />
           </div>
         </>

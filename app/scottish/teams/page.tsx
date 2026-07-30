@@ -30,14 +30,10 @@ function fixtureStatusLabel(status: string | null | undefined): string | null {
       return "Live";
     case "PAUSED":
       return "HT";
-    case "SUSPENDED":
-      return "Suspended";
     case "POSTPONED":
       return "Postponed";
     case "CANCELLED":
       return "Cancelled";
-    case "AWARDED":
-      return "Awarded";
     default:
       return null;
   }
@@ -54,7 +50,7 @@ function formatKickoff(kickoff: string | null) {
   });
 }
 
-export default function TeamSurvival() {
+export default function ScottishTeamSurvival() {
   const [state, setState] = useState<TeamStateResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
@@ -62,13 +58,13 @@ export default function TeamSurvival() {
   const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
-    const data = await api("/api/team-state");
+    const data = await api("/api/scot-team-state");
     setState(data);
   }, []);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
-    Promise.all([refresh(), wait(2000)]).finally(() => setLoading(false));
+    Promise.all([refresh(), wait(1500)]).finally(() => setLoading(false));
   }, [refresh]);
 
   if (loading) {
@@ -92,6 +88,10 @@ export default function TeamSurvival() {
 
   return (
     <div className="max-w-[760px] mx-auto px-4 pb-24 pt-7">
+      <div className="bg-accent-soft border border-accent/30 text-accent rounded-xl px-4 py-3 mb-6 text-[13px] text-center">
+        🏴 Trial weekend — Scottish Premiership. Fixtures &amp; scores are synced from TheSportsDB.
+      </div>
+
       <Hero
         gameState={gameState}
         aliveCount={alive.length}
@@ -165,7 +165,7 @@ export default function TeamSurvival() {
         <Panel>
           <PanelTitle>Not in this pool</PanelTitle>
           <Sub>
-            The admin hasn&apos;t added you to Team Survival. Head back to the{" "}
+            The admin hasn&apos;t added you to the Scottish trial. Head back to the{" "}
             <Link href="/" className="text-accent underline">
               home page
             </Link>{" "}
@@ -174,21 +174,11 @@ export default function TeamSurvival() {
         </Panel>
       )}
 
-      {me && me.canPlayTeams && gameState.locked && (
-        <Panel>
-          <PanelTitle>Not open yet</PanelTitle>
-          <Sub>
-            You&apos;re signed up for Team Survival, but the admin has this locked until the season
-            starts. Check back soon!
-          </Sub>
-        </Panel>
-      )}
-
-      {me && me.canPlayTeams && !gameState.locked && gameState.phase !== "finished" && (
+      {me && me.canPlayTeams && gameState.phase !== "finished" && (
         <PickZone me={me} gameState={gameState} availableTeams={state.availableTeams} onDone={refresh} />
       )}
 
-      {me && me.canPlayTeams && !gameState.locked && <PickHistoryPanel history={me.history} />}
+      {me && me.canPlayTeams && <PickHistoryPanel history={me.history} />}
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
         GEMINI&apos;S LAST MAN STANDING · pick wisely, there&apos;s no going back
@@ -221,7 +211,7 @@ function Hero({
         ← All games
       </Link>
       <div className="font-mono text-[12px] tracking-[3px] uppercase text-accent mb-2.5">
-        Team Survival
+        🏴 Scottish Premiership Trial
       </div>
       <h1 className="font-display text-[54px] leading-[0.95] mb-3 text-text">
         Pick a Team
@@ -229,8 +219,8 @@ function Hero({
         Survive the Week
       </h1>
       <p className="text-text-dim text-[15px] max-w-[460px] mx-auto leading-relaxed">
-        Pick one Premier League team every gameweek. Win and you go through — draw or lose and
-        you&apos;re out.
+        Pick one Scottish Premiership team every gameweek. Win and you go through — draw or lose
+        and you&apos;re out.
       </p>
       <div className="inline-flex mt-5 border border-line-strong rounded-[10px] overflow-hidden bg-bg-deep">
         {[
@@ -252,13 +242,13 @@ function Hero({
           📅 Fixtures
         </GhostButton>
         <Link
-          href="/teams/standings"
+          href="/scottish/teams/standings"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
           📊 Standings
         </Link>
         <Link
-          href="/teams/admin"
+          href="/scottish/teams/admin"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
           🛠️ Admin
@@ -272,7 +262,7 @@ function HowItWorks() {
   const steps = [
     {
       title: "Pick a Team",
-      body: "Every gameweek, choose one Premier League team from that week's fixtures.",
+      body: "Every gameweek, choose one Scottish Premiership team from that week's fixtures.",
     },
     {
       title: "Win to Survive",
@@ -280,7 +270,7 @@ function HowItWorks() {
     },
     {
       title: "No Repeats",
-      body: "Once you've picked a team, they're off the table for the rest of the season.",
+      body: "Once you've picked a team, they're off the table for the rest of the trial.",
     },
     {
       title: "Be the Last Man Standing",
@@ -327,7 +317,7 @@ function WinnerBanner({ alive, gw }: { alive: Participant[]; gw: number }) {
       <p className="text-text-dim text-[13.5px]">
         {won
           ? `Last Man Standing after ${gw} gameweek${gw === 1 ? "" : "s"}. Everyone else got shut out.`
-          : `Nobody's team came through in gameweek ${gw}. The pool ends with no survivor.`}
+          : `Nobody's team came through in gameweek ${gw}. The trial ends with no survivor.`}
       </p>
     </div>
   );
@@ -364,7 +354,6 @@ function FixtureStatusLine({ fixture }: { fixture: Fixture }) {
 function FixturesPanel({ currentGW }: { currentGW: number }) {
   const [selectedGW, setSelectedGW] = useState(currentGW);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
-  const [officialUrl, setOfficialUrl] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -374,10 +363,9 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    api(`/api/team-fixtures?gw=${selectedGW}`).then((data) => {
+    api(`/api/scot-team-fixtures?gw=${selectedGW}`).then((data) => {
       if (cancelled) return;
       setFixtures(data.fixtures);
-      setOfficialUrl(data.officialFixturesUrl);
       setLoading(false);
     });
     return () => {
@@ -405,8 +393,8 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
         <EmptyNote>Loading fixtures…</EmptyNote>
       ) : fixtures.length === 0 ? (
         <EmptyNote>
-          No fixtures added for this gameweek yet — check back soon, or use the official link
-          below.
+          No fixtures synced for this gameweek yet — the admin needs to hit &quot;Sync fixtures&quot;
+          on the admin page.
         </EmptyNote>
       ) : (
         <div className="flex flex-col gap-2">
@@ -423,14 +411,6 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
           ))}
         </div>
       )}
-      <a
-        href={officialUrl}
-        target="_blank"
-        rel="noopener"
-        className="inline-block mt-3.5 text-[12.5px] text-accent border-b border-dotted border-accent no-underline"
-      >
-        Check live scores on premierleague.com ↗
-      </a>
     </div>
   );
 }
@@ -486,9 +466,7 @@ function PickZone({
     return (
       <Panel>
         <PanelTitle>Pick locked — GW{gameState.currentGW}</PanelTitle>
-        <Sub>
-          You didn&apos;t lock in a pick before kickoff this gameweek. Hang tight for results.
-        </Sub>
+        <Sub>You didn&apos;t lock in a pick before kickoff this gameweek. Hang tight for results.</Sub>
       </Panel>
     );
   }
@@ -561,7 +539,7 @@ function TeamPickForm({
     setError("");
     setNotice("");
     try {
-      await api("/api/team-picks", { method: "POST", body: JSON.stringify({ team }) });
+      await api("/api/scot-team-picks", { method: "POST", body: JSON.stringify({ team }) });
       setValue(team);
       onDone();
     } catch (e) {
@@ -576,7 +554,7 @@ function TeamPickForm({
     setError("");
     setNotice("");
     try {
-      await api("/api/team-picks", { method: "DELETE" });
+      await api("/api/scot-team-picks", { method: "DELETE" });
       setValue("");
       setNotice("Your pick has been cleared for this gameweek.");
       onDone();
@@ -591,7 +569,7 @@ function TeamPickForm({
       <div className="px-5 pt-5">
         <PanelTitle>Your pick — Gameweek {gameState.currentGW}</PanelTitle>
         <Sub>
-          Each team can only be picked once all season. Choose carefully.
+          Each team can only be picked once all trial. Choose carefully.
           {gameState.pickDeadline && (
             <span className="block mt-1">
               You can change your pick until {formatKickoff(gameState.pickDeadline)}.

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { getCurrentParticipantId } from "@/lib/session";
-import { officialFixturesUrl, computePickDeadline } from "@/lib/game";
+import { computePickDeadline } from "@/lib/game";
 import { deriveTeamResult, findTeamFixture } from "@/lib/teams";
 import { withErrors } from "@/lib/api-wrapper";
 
@@ -9,18 +9,18 @@ export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, locked FROM team_state WHERE id = 1"
+    "SELECT current_gw, phase, season FROM scot_team_state WHERE id = 1"
   );
   const gs = gsRows[0];
 
   const { rows: participants } = await pool.query(
-    `SELECT id, name, team_status AS status, team_eliminated_gw AS "eliminatedGW",
-            can_play_players AS "canPlayPlayers", can_play_teams AS "canPlayTeams"
+    `SELECT id, name, scot_team_status AS status, scot_team_eliminated_gw AS "eliminatedGW",
+            can_play_scot_players AS "canPlayPlayers", can_play_scot_teams AS "canPlayTeams"
      FROM participants ORDER BY created_at ASC`
   );
 
   const { rows: submittedRows } = await pool.query(
-    "SELECT participant_id FROM team_picks WHERE gw = $1",
+    "SELECT participant_id FROM scot_team_picks WHERE gw = $1",
     [gs.current_gw]
   );
   const submittedSet = new Set(submittedRows.map((r) => r.participant_id));
@@ -41,26 +41,26 @@ export const GET = withErrors(async () => {
 
   if (participantId) {
     const { rows: meRows } = await pool.query(
-      `SELECT id, name, team_status AS status, team_eliminated_gw AS "eliminatedGW",
-              can_play_players AS "canPlayPlayers", can_play_teams AS "canPlayTeams"
+      `SELECT id, name, scot_team_status AS status, scot_team_eliminated_gw AS "eliminatedGW",
+              can_play_scot_players AS "canPlayPlayers", can_play_scot_teams AS "canPlayTeams"
        FROM participants WHERE id = $1`,
       [participantId]
     );
     if (meRows[0]) {
       const { rows: pickRows } = await pool.query(
-        `SELECT team FROM team_picks WHERE gw = $1 AND participant_id = $2`,
+        `SELECT team FROM scot_team_picks WHERE gw = $1 AND participant_id = $2`,
         [gs.current_gw, participantId]
       );
       const { rows: usedRows } = await pool.query(
-        `SELECT team FROM team_picks WHERE participant_id = $1 AND gw != $2`,
+        `SELECT team FROM scot_team_picks WHERE participant_id = $1 AND gw != $2`,
         [participantId, gs.current_gw]
       );
       const usedTeams = Array.from(new Set(usedRows.map((r) => r.team.toLowerCase())));
 
       const { rows: historyRows } = await pool.query(
         `SELECT tp.gw, tp.team, tr.winning_teams AS "winningTeams"
-         FROM team_picks tp
-         LEFT JOIN team_results tr ON tr.gw = tp.gw
+         FROM scot_team_picks tp
+         LEFT JOIN scot_team_results tr ON tr.gw = tp.gw
          WHERE tp.participant_id = $1 AND tp.gw < $2
          ORDER BY tp.gw ASC`,
         [participantId, gs.current_gw]
@@ -105,11 +105,9 @@ export const GET = withErrors(async () => {
       phase: gs.phase,
       season: gs.season,
       pickDeadline,
-      locked: gs.locked,
     },
     participants: participants.map((p) => ({ ...p, submitted: submittedSet.has(p.id) })),
     fixtures,
-    officialFixturesUrl: officialFixturesUrl(gs.season, gs.current_gw),
     availableTeams,
     me,
   });

@@ -17,11 +17,8 @@ export const POST = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ error: "Pick a team." }, { status: 400 });
   }
 
-  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season, locked FROM team_state WHERE id = 1");
+  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season FROM scot_team_state WHERE id = 1");
   const gs = gsRows[0];
-  if (gs.locked) {
-    return NextResponse.json({ error: "Picks aren't open yet." }, { status: 400 });
-  }
   if (gs.phase !== "picking") {
     return NextResponse.json({ error: "Picks aren't open right now." }, { status: 400 });
   }
@@ -43,13 +40,13 @@ export const POST = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ error: "That team isn't playing this gameweek." }, { status: 400 });
   }
 
-  const { rows: meRows } = await pool.query("SELECT team_status FROM participants WHERE id = $1", [participantId]);
-  if (!meRows[0] || meRows[0].team_status === "eliminated") {
+  const { rows: meRows } = await pool.query("SELECT scot_team_status FROM participants WHERE id = $1", [participantId]);
+  if (!meRows[0] || meRows[0].scot_team_status === "eliminated") {
     return NextResponse.json({ error: "You're already out of the pool." }, { status: 400 });
   }
 
   const { rows: usedRows } = await pool.query(
-    "SELECT team FROM team_picks WHERE participant_id = $1 AND gw != $2",
+    "SELECT team FROM scot_team_picks WHERE participant_id = $1 AND gw != $2",
     [participantId, gs.current_gw]
   );
   const used = new Set(usedRows.map((r) => r.team.toLowerCase()));
@@ -61,7 +58,7 @@ export const POST = withErrors(async (req: NextRequest) => {
   }
 
   await pool.query(
-    `INSERT INTO team_picks (gw, participant_id, team)
+    `INSERT INTO scot_team_picks (gw, participant_id, team)
      VALUES ($1, $2, $3)
      ON CONFLICT (gw, participant_id)
      DO UPDATE SET team = EXCLUDED.team, submitted_at = now()`,
@@ -78,11 +75,8 @@ export const DELETE = withErrors(async () => {
     return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   }
 
-  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season, locked FROM team_state WHERE id = 1");
+  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season FROM scot_team_state WHERE id = 1");
   const gs = gsRows[0];
-  if (gs.locked) {
-    return NextResponse.json({ error: "Picks aren't open yet." }, { status: 400 });
-  }
   if (gs.phase !== "picking") {
     return NextResponse.json({ error: "Picks aren't open right now." }, { status: 400 });
   }
@@ -99,7 +93,7 @@ export const DELETE = withErrors(async () => {
     );
   }
 
-  await pool.query("DELETE FROM team_picks WHERE gw = $1 AND participant_id = $2", [gs.current_gw, participantId]);
+  await pool.query("DELETE FROM scot_team_picks WHERE gw = $1 AND participant_id = $2", [gs.current_gw, participantId]);
 
   return NextResponse.json({ ok: true });
 });

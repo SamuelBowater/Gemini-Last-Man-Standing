@@ -2,11 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, GhostButton, DangerButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
-import { TeamBadge } from "@/components/team-badge";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { ChangePinPanel } from "@/components/change-pin-panel";
-import type { Fixture, Participant } from "@/lib/types";
-import type { TeamStateResponse, TeamMe, TeamGameState, TeamPickHistoryEntry } from "@/lib/team-types";
+import { POSITIONS, PositionKey } from "@/lib/data";
+import type { StateResponse, Fixture, LivePlayer, PickHistoryEntry } from "@/lib/types";
 
 async function api(path: string, opts?: RequestInit) {
   const res = await fetch(path, {
@@ -30,14 +29,10 @@ function fixtureStatusLabel(status: string | null | undefined): string | null {
       return "Live";
     case "PAUSED":
       return "HT";
-    case "SUSPENDED":
-      return "Suspended";
     case "POSTPONED":
       return "Postponed";
     case "CANCELLED":
       return "Cancelled";
-    case "AWARDED":
-      return "Awarded";
     default:
       return null;
   }
@@ -54,21 +49,25 @@ function formatKickoff(kickoff: string | null) {
   });
 }
 
-export default function TeamSurvival() {
-  const [state, setState] = useState<TeamStateResponse | null>(null);
+export default function ScottishPlayersPage() {
+  const [state, setState] = useState<StateResponse | null>(null);
+  const [players, setPlayers] = useState<LivePlayer[]>([]);
   const [loading, setLoading] = useState(true);
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   const [fixturesOpen, setFixturesOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
-    const data = await api("/api/team-state");
+    const data = await api("/api/scot-state");
     setState(data);
   }, []);
 
   useEffect(() => {
+    const loadPlayers = api("/api/scot-players")
+      .then((d) => setPlayers(d.players))
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
-    Promise.all([refresh(), wait(2000)]).finally(() => setLoading(false));
+    Promise.all([refresh(), loadPlayers, wait(1500)]).finally(() => setLoading(false));
   }, [refresh]);
 
   if (loading) {
@@ -87,11 +86,16 @@ export default function TeamSurvival() {
   }
 
   const { gameState, participants: allParticipants, me } = state;
-  const participants = allParticipants.filter((p) => p.canPlayTeams);
+  const participants = allParticipants.filter((p) => p.canPlayPlayers);
   const alive = participants.filter((p) => p.status !== "eliminated");
 
   return (
     <div className="max-w-[760px] mx-auto px-4 pb-24 pt-7">
+      <div className="bg-accent-soft border border-accent/30 text-accent rounded-xl px-4 py-3 mb-6 text-[13px] text-center">
+        🏴 Trial weekend — Scottish Premiership. Fixtures &amp; scorer suggestions are synced from
+        TheSportsDB; picks are free-typed since there&apos;s no live squad list for this league.
+      </div>
+
       <Hero
         gameState={gameState}
         aliveCount={alive.length}
@@ -161,11 +165,11 @@ export default function TeamSurvival() {
         </Panel>
       )}
 
-      {me && !me.canPlayTeams && (
+      {me && !me.canPlayPlayers && (
         <Panel>
           <PanelTitle>Not in this pool</PanelTitle>
           <Sub>
-            The admin hasn&apos;t added you to Team Survival. Head back to the{" "}
+            The admin hasn&apos;t added you to the Scottish trial. Head back to the{" "}
             <Link href="/" className="text-accent underline">
               home page
             </Link>{" "}
@@ -174,24 +178,14 @@ export default function TeamSurvival() {
         </Panel>
       )}
 
-      {me && me.canPlayTeams && gameState.locked && (
-        <Panel>
-          <PanelTitle>Not open yet</PanelTitle>
-          <Sub>
-            You&apos;re signed up for Team Survival, but the admin has this locked until the season
-            starts. Check back soon!
-          </Sub>
-        </Panel>
+      {me && me.canPlayPlayers && gameState.phase !== "finished" && (
+        <PickZone me={me} gameState={gameState} players={players} onDone={refresh} />
       )}
 
-      {me && me.canPlayTeams && !gameState.locked && gameState.phase !== "finished" && (
-        <PickZone me={me} gameState={gameState} availableTeams={state.availableTeams} onDone={refresh} />
-      )}
-
-      {me && me.canPlayTeams && !gameState.locked && <PickHistoryPanel history={me.history} />}
+      {me && me.canPlayPlayers && <PickHistoryPanel history={me.history} />}
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
-        GEMINI&apos;S LAST MAN STANDING · pick wisely, there&apos;s no going back
+        GEMINI&apos;S LAST MAN STANDING · one net, three shots, no excuses
         <br />
         Created by Samuel Bowater
       </footer>
@@ -206,7 +200,7 @@ function Hero({
   onHowItWorks,
   onFixtures,
 }: {
-  gameState: TeamGameState;
+  gameState: StateResponse["gameState"];
   aliveCount: number;
   total: number;
   onHowItWorks: () => void;
@@ -221,16 +215,16 @@ function Hero({
         ← All games
       </Link>
       <div className="font-mono text-[12px] tracking-[3px] uppercase text-accent mb-2.5">
-        Team Survival
+        🏴 Scottish Premiership Trial
       </div>
       <h1 className="font-display text-[54px] leading-[0.95] mb-3 text-text">
-        Pick a Team
+        Gemini&apos;s Last Man
         <br />
-        Survive the Week
+        Standing
       </h1>
       <p className="text-text-dim text-[15px] max-w-[460px] mx-auto leading-relaxed">
-        Pick one Premier League team every gameweek. Win and you go through — draw or lose and
-        you&apos;re out.
+        Pick a forward, a midfielder and a defender every gameweek. One of them has to find the
+        net — or you&apos;re out.
       </p>
       <div className="inline-flex mt-5 border border-line-strong rounded-[10px] overflow-hidden bg-bg-deep">
         {[
@@ -252,13 +246,13 @@ function Hero({
           📅 Fixtures
         </GhostButton>
         <Link
-          href="/teams/standings"
+          href="/scottish/players/standings"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
           📊 Standings
         </Link>
         <Link
-          href="/teams/admin"
+          href="/scottish/players/admin"
           className="font-semibold text-sm rounded-xl px-4 py-2 text-[13px] bg-transparent border border-line-strong text-text hover:border-accent hover:text-accent transition inline-flex items-center"
         >
           🛠️ Admin
@@ -271,16 +265,16 @@ function Hero({
 function HowItWorks() {
   const steps = [
     {
-      title: "Pick a Team",
-      body: "Every gameweek, choose one Premier League team from that week's fixtures.",
+      title: "Pick Your Players",
+      body: "Every gameweek, type in one Forward, one Midfielder and one Defender from the Scottish Premiership.",
     },
     {
-      title: "Win to Survive",
-      body: "If your team wins, you live to fight another week. A draw or a loss knocks you out.",
+      title: "Survive the Gameweek",
+      body: "As long as at least one of your three finds the net, you live to fight another week.",
     },
     {
       title: "No Repeats",
-      body: "Once you've picked a team, they're off the table for the rest of the season.",
+      body: "Once you've picked a player, they're off the table for the rest of the trial.",
     },
     {
       title: "Be the Last Man Standing",
@@ -308,7 +302,7 @@ function HowItWorks() {
   );
 }
 
-function WinnerBanner({ alive, gw }: { alive: Participant[]; gw: number }) {
+function WinnerBanner({ alive, gw }: { alive: StateResponse["participants"]; gw: number }) {
   const won = alive.length === 1;
   return (
     <div
@@ -327,7 +321,7 @@ function WinnerBanner({ alive, gw }: { alive: Participant[]; gw: number }) {
       <p className="text-text-dim text-[13.5px]">
         {won
           ? `Last Man Standing after ${gw} gameweek${gw === 1 ? "" : "s"}. Everyone else got shut out.`
-          : `Nobody's team came through in gameweek ${gw}. The pool ends with no survivor.`}
+          : `Nobody's scorers came through in gameweek ${gw}. The trial ends with no survivor.`}
       </p>
     </div>
   );
@@ -347,9 +341,7 @@ function FixtureStatusLine({ fixture }: { fixture: Fixture }) {
         <span className="font-mono text-[13px] font-bold text-text">
           {fixture.homeScore} - {fixture.awayScore}
         </span>
-        {label && (
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-accent">{label}</span>
-        )}
+        {label && <span className="text-[10px] font-semibold uppercase tracking-wide text-accent">{label}</span>}
       </div>
     );
   }
@@ -364,7 +356,6 @@ function FixtureStatusLine({ fixture }: { fixture: Fixture }) {
 function FixturesPanel({ currentGW }: { currentGW: number }) {
   const [selectedGW, setSelectedGW] = useState(currentGW);
   const [fixtures, setFixtures] = useState<Fixture[]>([]);
-  const [officialUrl, setOfficialUrl] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -374,10 +365,9 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    api(`/api/team-fixtures?gw=${selectedGW}`).then((data) => {
+    api(`/api/scot-fixtures?gw=${selectedGW}`).then((data) => {
       if (cancelled) return;
       setFixtures(data.fixtures);
-      setOfficialUrl(data.officialFixturesUrl);
       setLoading(false);
     });
     return () => {
@@ -405,32 +395,21 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
         <EmptyNote>Loading fixtures…</EmptyNote>
       ) : fixtures.length === 0 ? (
         <EmptyNote>
-          No fixtures added for this gameweek yet — check back soon, or use the official link
-          below.
+          No fixtures synced for this gameweek yet — the admin needs to hit &quot;Sync fixtures &amp;
+          scorers&quot; on the admin page.
         </EmptyNote>
       ) : (
         <div className="flex flex-col gap-2">
           {fixtures.map((f, i) => (
             <div key={i} className="bg-bg-deep border border-line rounded-xl px-3.5 py-3">
-              <div className="font-semibold flex items-center gap-1.5">
-                <TeamBadge team={f.home} size={20} />
-                {f.home} <span className="text-text-dim font-normal">v</span>
-                <TeamBadge team={f.away} size={20} />
-                {f.away}
+              <div className="font-semibold">
+                {f.home} <span className="text-text-dim font-normal">v</span> {f.away}
               </div>
               <FixtureStatusLine fixture={f} />
             </div>
           ))}
         </div>
       )}
-      <a
-        href={officialUrl}
-        target="_blank"
-        rel="noopener"
-        className="inline-block mt-3.5 text-[12.5px] text-accent border-b border-dotted border-accent no-underline"
-      >
-        Check live scores on premierleague.com ↗
-      </a>
     </div>
   );
 }
@@ -438,12 +417,12 @@ function FixturesPanel({ currentGW }: { currentGW: number }) {
 function PickZone({
   me,
   gameState,
-  availableTeams,
+  players,
   onDone,
 }: {
-  me: TeamMe;
-  gameState: TeamGameState;
-  availableTeams: string[];
+  me: NonNullable<StateResponse["me"]>;
+  gameState: StateResponse["gameState"];
+  players: LivePlayer[];
   onDone: () => void;
 }) {
   if (me.status === "eliminated") {
@@ -455,8 +434,8 @@ function PickZone({
           <Badge tone="out">Eliminated · GW{me.eliminatedGW}</Badge>
         </div>
         <Sub>
-          Your team didn&apos;t win in gameweek {me.eliminatedGW}. Stick around and watch the rest
-          of the pool play out below.
+          None of your three found the net in gameweek {me.eliminatedGW}. Stick around and watch
+          the rest of the pool play out below.
         </Sub>
       </Panel>
     );
@@ -470,11 +449,16 @@ function PickZone({
     if (me.pick) {
       return (
         <Panel>
-          <PanelTitle>Pick locked — GW{gameState.currentGW}</PanelTitle>
+          <PanelTitle>Picks locked — GW{gameState.currentGW}</PanelTitle>
           <div className="flex gap-2 flex-wrap">
-            <span className="flex items-center gap-1.5 text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-              <TeamBadge team={me.pick.team} size={18} />
-              {me.pick.team}
+            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+              FWD · {me.pick.forward}
+            </span>
+            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+              MID · {me.pick.midfielder}
+            </span>
+            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
+              DEF · {me.pick.defender}
             </span>
           </div>
           <Sub>
@@ -485,18 +469,16 @@ function PickZone({
     }
     return (
       <Panel>
-        <PanelTitle>Pick locked — GW{gameState.currentGW}</PanelTitle>
-        <Sub>
-          You didn&apos;t lock in a pick before kickoff this gameweek. Hang tight for results.
-        </Sub>
+        <PanelTitle>Picks locked — GW{gameState.currentGW}</PanelTitle>
+        <Sub>You didn&apos;t lock in a pick before kickoff this gameweek. Hang tight for results.</Sub>
       </Panel>
     );
   }
 
-  return <TeamPickForm me={me} gameState={gameState} availableTeams={availableTeams} onDone={onDone} />;
+  return <PickForm me={me} gameState={gameState} players={players} onDone={onDone} />;
 }
 
-function PickHistoryPanel({ history }: { history: TeamPickHistoryEntry[] }) {
+function PickHistoryPanel({ history }: { history: PickHistoryEntry[] }) {
   return (
     <Panel>
       <PanelTitle>Your picks so far</PanelTitle>
@@ -505,17 +487,15 @@ function PickHistoryPanel({ history }: { history: TeamPickHistoryEntry[] }) {
       ) : (
         <div className="flex flex-col gap-2">
           {[...history].reverse().map((h) => (
-            <div key={h.gw} className="bg-bg-deep border border-line rounded-xl px-3.5 py-3 flex justify-between items-center">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-text-dim mb-1">
-                  Gameweek {h.gw}
-                </div>
-                <div className="font-semibold flex items-center gap-1.5">
-                  <TeamBadge team={h.team} size={20} />
-                  {h.team}
-                </div>
+            <div key={h.gw} className="bg-bg-deep border border-line rounded-xl px-3.5 py-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wide text-text-dim mb-1.5">
+                Gameweek {h.gw}
               </div>
-              <ResultBadge result={h.result} />
+              <div className="flex gap-2 flex-wrap">
+                <HistoryChip label="FWD" name={h.forward} scored={h.forwardScored} />
+                <HistoryChip label="MID" name={h.midfielder} scored={h.midfielderScored} />
+                <HistoryChip label="DEF" name={h.defender} scored={h.defenderScored} />
+              </div>
             </div>
           ))}
         </div>
@@ -524,45 +504,103 @@ function PickHistoryPanel({ history }: { history: TeamPickHistoryEntry[] }) {
   );
 }
 
-function ResultBadge({ result }: { result: TeamPickHistoryEntry["result"] }) {
-  const label: Record<TeamPickHistoryEntry["result"], string> = {
-    win: "Won ✓",
-    draw: "Drew",
-    loss: "Lost",
-    pending: "Pending",
-    unplayed: "Pending",
-  };
-  const tone: "alive" | "out" | "pending" =
-    result === "win" ? "alive" : result === "pending" || result === "unplayed" ? "pending" : "out";
-  return <Badge tone={tone}>{label[result]}</Badge>;
+function HistoryChip({ label, name, scored }: { label: string; name: string; scored: boolean | null }) {
+  return (
+    <span
+      className={`text-[12px] px-2.5 py-1.5 rounded-md border ${
+        scored
+          ? "bg-green-alive/10 border-green-alive/30 text-green-alive"
+          : scored === false
+            ? "bg-bg-deep border-line text-text-dim"
+            : "bg-bg-deep border-line text-text"
+      }`}
+    >
+      {label} · {name}
+      {scored ? " ⚽" : ""}
+    </span>
+  );
 }
 
-function TeamPickForm({
+function PlayerPicker({
+  value,
+  onChange,
+  candidates,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  candidates: LivePlayer[];
+}) {
+  const [open, setOpen] = useState(false);
+  const query = value.trim().toLowerCase();
+  const filtered = (
+    query ? candidates.filter((p) => p.name.toLowerCase().includes(query)) : candidates
+  ).slice(0, 8);
+
+  return (
+    <div className="relative">
+      <input
+        autoComplete="off"
+        placeholder="Type a player name…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-10 mt-1 w-full bg-panel border border-line-strong rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+          {filtered.map((p) => (
+            <button
+              key={p.name}
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => {
+                onChange(p.name);
+                setOpen(false);
+              }}
+              className="w-full flex justify-between items-center gap-2 px-3.5 py-2.5 text-left hover:bg-bg-deep transition"
+            >
+              <span className="truncate">
+                <span className="font-medium">{p.name}</span>
+                {p.team && <span className="text-text-dim text-[12px]"> · {p.team}</span>}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PickForm({
   me,
   gameState,
-  availableTeams,
+  players,
   onDone,
 }: {
-  me: TeamMe;
-  gameState: TeamGameState;
-  availableTeams: string[];
+  me: NonNullable<StateResponse["me"]>;
+  gameState: StateResponse["gameState"];
+  players: LivePlayer[];
   onDone: () => void;
 }) {
-  const [value, setValue] = useState(me.pick?.team || "");
+  const [values, setValues] = useState<Record<PositionKey, string>>({
+    forward: me.pick?.forward || "",
+    midfielder: me.pick?.midfielder || "",
+    defender: me.pick?.defender || "",
+  });
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const used = new Set(me.usedTeams);
-  const candidates = availableTeams.filter((t) => !used.has(t.toLowerCase()) || t === value);
+  const filled = Object.values(values).every((v) => v.trim().length > 0);
+  const used = new Set(me.usedPlayers);
 
-  async function submit(team: string) {
+  async function submit() {
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await api("/api/team-picks", { method: "POST", body: JSON.stringify({ team }) });
-      setValue(team);
+      await api("/api/scot-picks", { method: "POST", body: JSON.stringify(values) });
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -571,14 +609,14 @@ function TeamPickForm({
   }
 
   async function clear() {
-    if (!confirm("Clear your pick for this gameweek? You'll need to pick again before the deadline.")) return;
+    if (!confirm("Clear your picks for this gameweek? You'll need to pick again before the deadline.")) return;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      await api("/api/team-picks", { method: "DELETE" });
-      setValue("");
-      setNotice("Your pick has been cleared for this gameweek.");
+      await api("/api/scot-picks", { method: "DELETE" });
+      setValues({ forward: "", midfielder: "", defender: "" });
+      setNotice("Your picks have been cleared for this gameweek.");
       onDone();
     } catch (e) {
       setError((e as Error).message);
@@ -589,52 +627,74 @@ function TeamPickForm({
   return (
     <div className="bg-panel border border-line rounded-[10px] overflow-hidden mb-5">
       <div className="px-5 pt-5">
-        <PanelTitle>Your pick — Gameweek {gameState.currentGW}</PanelTitle>
+        <PanelTitle>Your picks — Gameweek {gameState.currentGW}</PanelTitle>
         <Sub>
-          Each team can only be picked once all season. Choose carefully.
+          Each player can only be picked once all trial.
           {gameState.pickDeadline && (
             <span className="block mt-1">
-              You can change your pick until {formatKickoff(gameState.pickDeadline)}.
+              You can change your picks until {formatKickoff(gameState.pickDeadline)}.
             </span>
           )}
         </Sub>
       </div>
-      <div className="bg-bg-deep px-5 pt-4 pb-5">
-        {candidates.length === 0 ? (
-          <EmptyNote>No fixtures synced for this gameweek yet — check back soon.</EmptyNote>
-        ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-            {candidates.map((team) => {
-              const selected = value === team;
-              return (
-                <button
-                  key={team}
-                  type="button"
-                  disabled={busy}
-                  onClick={() => submit(team)}
-                  className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border text-[13px] font-semibold text-center transition ${
-                    selected
-                      ? "bg-accent/10 border-accent text-accent"
-                      : "bg-panel border-line-strong text-text hover:border-accent/40"
+      <div className="bg-bg-deep">
+        {POSITIONS.map((pos) => {
+          const isUsed = used.has(values[pos.key].trim().toLowerCase());
+          const candidates = players.filter(
+            (p) => p.position === pos.key && !used.has(p.name.toLowerCase())
+          );
+          return (
+            <div key={pos.key} className="px-5 py-[18px] border-b border-line">
+              <div className="font-mono text-[11px] tracking-[2px] text-accent uppercase">{pos.label}</div>
+              <div className="text-text-dim text-[12.5px] my-1 mb-3">{pos.hint}</div>
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-[38px] h-[38px] min-w-[38px] rounded-full border-2 flex items-center justify-center font-display text-[15px] ${
+                    values[pos.key] ? "border-accent text-accent" : "border-line-strong text-text-dim"
                   }`}
                 >
-                  <TeamBadge team={team} />
-                  <span>{team}</span>
-                  {selected && <span className="block text-[10px] -mt-1">✓ Locked in</span>}
-                </button>
-              );
-            })}
+                  {values[pos.key] ? "✓" : "?"}
+                </div>
+                <div className="flex-1">
+                  {candidates.length > 0 ? (
+                    <PlayerPicker
+                      value={values[pos.key]}
+                      onChange={(v) => setValues((old) => ({ ...old, [pos.key]: v }))}
+                      candidates={candidates}
+                    />
+                  ) : (
+                    <input
+                      autoComplete="off"
+                      placeholder={`Type a ${pos.label.toLowerCase()}'s name…`}
+                      value={values[pos.key]}
+                      onChange={(e) => setValues((old) => ({ ...old, [pos.key]: e.target.value }))}
+                      className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent"
+                    />
+                  )}
+                  {isUsed && (
+                    <div className="text-[11.5px] text-red mt-1.5">
+                      You&apos;ve already picked this player in an earlier gameweek.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        <div className="px-5 py-4 bg-bg-deep flex flex-col items-end gap-2">
+          {error && <div className="text-red text-[13px] self-stretch">{error}</div>}
+          {notice && <div className="text-green-alive text-[13px] self-stretch">✅ {notice}</div>}
+          <div className="flex gap-2.5">
+            {me.pick && (
+              <DangerButton disabled={busy} onClick={clear}>
+                🗑️ Clear picks
+              </DangerButton>
+            )}
+            <PrimaryButton disabled={!filled || busy} onClick={submit}>
+              {busy ? "Saving…" : me.pick ? "✅ Update picks" : "🔒 Lock in picks"}
+            </PrimaryButton>
           </div>
-        )}
-        {error && <div className="text-red text-[13px] mt-3">{error}</div>}
-        {notice && <div className="text-green-alive text-[13px] mt-3">✅ {notice}</div>}
-        {me.pick && (
-          <div className="flex justify-end mt-4">
-            <DangerButton disabled={busy} onClick={clear}>
-              🗑️ Clear pick
-            </DangerButton>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

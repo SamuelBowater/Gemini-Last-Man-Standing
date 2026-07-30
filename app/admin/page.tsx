@@ -95,6 +95,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 function AdminDashboard() {
   const [players, setPlayers] = useState<AdminParticipant[]>([]);
   const [signupCode, setSignupCode] = useState<string | null>(null);
+  const [locked, setLocked] = useState(true);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -104,6 +105,7 @@ function AdminDashboard() {
     ]);
     setPlayers(playersRes.participants);
     setSignupCode(settingsRes.signupCode);
+    setLocked(settingsRes.locked);
   }, []);
 
   useEffect(() => {
@@ -151,7 +153,7 @@ function AdminDashboard() {
 
       <SignupCodePanel signupCode={signupCode} onChange={refresh} />
       <PlayersPanel players={players} onChange={refresh} />
-      <GamesPanel />
+      <GamesPanel locked={locked} onChange={refresh} />
       <DangerZone onChange={refresh} />
 
       <div className="text-center mt-8">
@@ -324,11 +326,51 @@ function PlayersPanel({ players, onChange }: { players: AdminParticipant[]; onCh
   );
 }
 
-function GamesPanel() {
+function GamesPanel({ locked, onChange }: { locked: boolean; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+
+  async function toggleLocked() {
+    setBusy(true);
+    try {
+      await api("/api/admin/settings", { method: "POST", body: JSON.stringify({ locked: !locked }) });
+      onChange();
+    } catch {
+      // ignore — onChange() will re-fetch and the switch will reflect reality either way
+    }
+    setBusy(false);
+  }
+
   return (
     <Panel>
       <PanelTitle>Games</PanelTitle>
       <Sub>Results, fixtures and other game-specific settings live on each game&apos;s own admin page.</Sub>
+
+      <div className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 mb-2">
+        <div>
+          <div className="font-semibold">🔒 Main season locked</div>
+          <div className="text-[11.5px] text-text-dim mt-0.5">
+            Locks Player Picks &amp; Team Survival together until the real Premier League season
+            starts. Signed-up players see a &quot;not open yet&quot; message instead of the pick form.
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={locked}
+          onClick={toggleLocked}
+          disabled={busy}
+          className={`shrink-0 ml-3 w-12 h-7 rounded-full relative transition disabled:opacity-50 ${
+            locked ? "bg-accent" : "bg-line-strong"
+          }`}
+        >
+          <span
+            className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+              locked ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+      </div>
+
       <div className="flex flex-col gap-2">
         <Link
           href="/players/admin"
@@ -342,6 +384,20 @@ function GamesPanel() {
           className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 hover:border-accent transition"
         >
           <span className="font-semibold">Team Survival admin</span>
+          <span className="text-accent text-[12px] font-semibold">→</span>
+        </Link>
+        <Link
+          href="/scottish/players/admin"
+          className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 hover:border-accent transition"
+        >
+          <span className="font-semibold">🏴 Scottish Player Picks admin</span>
+          <span className="text-accent text-[12px] font-semibold">→</span>
+        </Link>
+        <Link
+          href="/scottish/teams/admin"
+          className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 hover:border-accent transition"
+        >
+          <span className="font-semibold">🏴 Scottish Team Survival admin</span>
           <span className="text-accent text-[12px] font-semibold">→</span>
         </Link>
       </div>

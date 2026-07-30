@@ -32,3 +32,8 @@ export const TEAMS = [
 ];
 
 export const FD_COMPETITION_CODE = "PL"; // football-data.org's code for the Premier League
+
+export const SCOTTISH_TEAMS = [
+  "Aberdeen", "Celtic", "Dundee", "Dundee United", "Falkirk", "Heart of Midlothian",
+  "Hibernian", "Kilmarnock", "Motherwell", "Rangers", "St Johnstone", "St Mirren",
+];

@@ -52,6 +52,7 @@ export function ensureSchema(): Promise<void> {
       );
       INSERT INTO game_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS signup_code TEXT;
+      ALTER TABLE game_state ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT true;
 
       CREATE TABLE IF NOT EXISTS participants (
         id SERIAL PRIMARY KEY,
@@ -70,6 +71,12 @@ export function ensureSchema(): Promise<void> {
       ALTER TABLE participants ADD COLUMN IF NOT EXISTS team_status TEXT NOT NULL DEFAULT 'alive';
       ALTER TABLE participants ADD COLUMN IF NOT EXISTS team_eliminated_gw INTEGER;
       ALTER TABLE participants DROP CONSTRAINT IF EXISTS participants_code_key;
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS can_play_scot_players BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS can_play_scot_teams BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS scot_status TEXT NOT NULL DEFAULT 'alive';
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS scot_eliminated_gw INTEGER;
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS scot_team_status TEXT NOT NULL DEFAULT 'alive';
+      ALTER TABLE participants ADD COLUMN IF NOT EXISTS scot_team_eliminated_gw INTEGER;
 
       CREATE TABLE IF NOT EXISTS sessions (
         token TEXT PRIMARY KEY,
@@ -110,6 +117,7 @@ export function ensureSchema(): Promise<void> {
       );
       ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS home_score INTEGER;
       ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS away_score INTEGER;
+      ALTER TABLE fixtures ADD COLUMN IF NOT EXISTS external_id TEXT;
 
       CREATE TABLE IF NOT EXISTS sync_meta (
         id INTEGER PRIMARY KEY DEFAULT 1,
@@ -147,6 +155,7 @@ export function ensureSchema(): Promise<void> {
         CONSTRAINT single_row_team_state CHECK (id = 1)
       );
       INSERT INTO team_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+      ALTER TABLE team_state ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT true;
 
       CREATE TABLE IF NOT EXISTS team_picks (
         id SERIAL PRIMARY KEY,
@@ -162,6 +171,73 @@ export function ensureSchema(): Promise<void> {
         winning_teams JSONB NOT NULL DEFAULT '[]',
         applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+
+      CREATE TABLE IF NOT EXISTS scot_game_state (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        current_gw INTEGER NOT NULL DEFAULT 1,
+        phase TEXT NOT NULL DEFAULT 'picking',
+        season TEXT NOT NULL DEFAULT 'spfl-2026-27',
+        CONSTRAINT single_row_scot_game_state CHECK (id = 1)
+      );
+      INSERT INTO scot_game_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS scot_picks (
+        id SERIAL PRIMARY KEY,
+        gw INTEGER NOT NULL,
+        participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+        forward TEXT NOT NULL,
+        midfielder TEXT NOT NULL,
+        defender TEXT NOT NULL,
+        submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (gw, participant_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS scot_results (
+        gw INTEGER PRIMARY KEY,
+        scorers JSONB NOT NULL DEFAULT '[]',
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS scot_team_state (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        current_gw INTEGER NOT NULL DEFAULT 1,
+        phase TEXT NOT NULL DEFAULT 'picking',
+        season TEXT NOT NULL DEFAULT 'spfl-2026-27',
+        CONSTRAINT single_row_scot_team_state CHECK (id = 1)
+      );
+      INSERT INTO scot_team_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+
+      CREATE TABLE IF NOT EXISTS scot_team_picks (
+        id SERIAL PRIMARY KEY,
+        gw INTEGER NOT NULL,
+        participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+        team TEXT NOT NULL,
+        submitted_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (gw, participant_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS scot_team_results (
+        gw INTEGER PRIMARY KEY,
+        winning_teams JSONB NOT NULL DEFAULT '[]',
+        applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
+      CREATE TABLE IF NOT EXISTS scot_players (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL,
+        team TEXT NOT NULL,
+        position TEXT NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        UNIQUE (name, team)
+      );
+
+      CREATE TABLE IF NOT EXISTS scot_player_sync_meta (
+        id INTEGER PRIMARY KEY DEFAULT 1,
+        last_synced_at TIMESTAMPTZ,
+        last_error TEXT,
+        CONSTRAINT single_row_scot_player_sync CHECK (id = 1)
+      );
+      INSERT INTO scot_player_sync_meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
     `)
       .then(() => undefined)
       .catch((err) => {

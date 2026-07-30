@@ -1,26 +1,25 @@
 import { NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { getCurrentParticipantId } from "@/lib/session";
-import { officialFixturesUrl, computePickDeadline } from "@/lib/game";
+import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
 
 export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, locked FROM game_state WHERE id = 1"
+    "SELECT current_gw, phase, season FROM scot_game_state WHERE id = 1"
   );
   const gs = gsRows[0];
 
   const { rows: participants } = await pool.query(
-    `SELECT id, name, status, eliminated_gw AS "eliminatedGW",
-            can_play_players AS "canPlayPlayers", can_play_teams AS "canPlayTeams",
-            can_play_scot_players AS "canPlayScotPlayers", can_play_scot_teams AS "canPlayScotTeams"
+    `SELECT id, name, scot_status AS status, scot_eliminated_gw AS "eliminatedGW",
+            can_play_scot_players AS "canPlayPlayers", can_play_scot_teams AS "canPlayTeams"
      FROM participants ORDER BY created_at ASC`
   );
 
   const { rows: submittedRows } = await pool.query(
-    "SELECT participant_id FROM picks WHERE gw = $1",
+    "SELECT participant_id FROM scot_picks WHERE gw = $1",
     [gs.current_gw]
   );
   const submittedSet = new Set(submittedRows.map((r) => r.participant_id));
@@ -35,19 +34,18 @@ export const GET = withErrors(async () => {
 
   if (participantId) {
     const { rows: meRows } = await pool.query(
-      `SELECT id, name, status, eliminated_gw AS "eliminatedGW",
-              can_play_players AS "canPlayPlayers", can_play_teams AS "canPlayTeams",
-              can_play_scot_players AS "canPlayScotPlayers", can_play_scot_teams AS "canPlayScotTeams"
+      `SELECT id, name, scot_status AS status, scot_eliminated_gw AS "eliminatedGW",
+              can_play_scot_players AS "canPlayPlayers", can_play_scot_teams AS "canPlayTeams"
        FROM participants WHERE id = $1`,
       [participantId]
     );
     if (meRows[0]) {
       const { rows: pickRows } = await pool.query(
-        `SELECT forward, midfielder, defender FROM picks WHERE gw = $1 AND participant_id = $2`,
+        `SELECT forward, midfielder, defender FROM scot_picks WHERE gw = $1 AND participant_id = $2`,
         [gs.current_gw, participantId]
       );
       const { rows: usedRows } = await pool.query(
-        `SELECT forward, midfielder, defender FROM picks WHERE participant_id = $1 AND gw != $2`,
+        `SELECT forward, midfielder, defender FROM scot_picks WHERE participant_id = $1 AND gw != $2`,
         [participantId, gs.current_gw]
       );
       const usedPlayers = Array.from(
@@ -56,8 +54,8 @@ export const GET = withErrors(async () => {
 
       const { rows: historyRows } = await pool.query(
         `SELECT pk.gw, pk.forward, pk.midfielder, pk.defender, r.scorers
-         FROM picks pk
-         LEFT JOIN results r ON r.gw = pk.gw
+         FROM scot_picks pk
+         LEFT JOIN scot_results r ON r.gw = pk.gw
          WHERE pk.participant_id = $1 AND pk.gw < $2
          ORDER BY pk.gw ASC`,
         [participantId, gs.current_gw]
@@ -94,11 +92,9 @@ export const GET = withErrors(async () => {
       phase: gs.phase,
       season: gs.season,
       pickDeadline,
-      locked: gs.locked,
     },
     participants: participants.map((p) => ({ ...p, submitted: submittedSet.has(p.id) })),
     fixtures,
-    officialFixturesUrl: officialFixturesUrl(gs.season, gs.current_gw),
     me,
   });
 });

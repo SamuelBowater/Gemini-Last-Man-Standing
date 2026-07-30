@@ -18,6 +18,7 @@ export interface GameState {
   phase: Phase;
   season: string;
   pickDeadline: string | null;
+  locked: boolean;
 }
 
 export interface Participant {
@@ -28,6 +29,8 @@ export interface Participant {
   submitted?: boolean;
   canPlayPlayers: boolean;
   canPlayTeams: boolean;
+  canPlayScotPlayers?: boolean;
+  canPlayScotTeams?: boolean;
 }
 
 export interface Fixture {

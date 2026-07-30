@@ -202,11 +202,21 @@ export default function Home() {
         </Panel>
       )}
 
-      {me && me.canPlayPlayers && gameState.phase !== "finished" && (
+      {me && me.canPlayPlayers && gameState.locked && (
+        <Panel>
+          <PanelTitle>Not open yet</PanelTitle>
+          <Sub>
+            You&apos;re signed up for Player Picks, but the admin has this locked until the season
+            starts. Check back soon!
+          </Sub>
+        </Panel>
+      )}
+
+      {me && me.canPlayPlayers && !gameState.locked && gameState.phase !== "finished" && (
         <PickZone me={me} gameState={gameState} players={players} onDone={refresh} />
       )}
 
-      {me && me.canPlayPlayers && <PickHistoryPanel history={me.history} />}
+      {me && me.canPlayPlayers && !gameState.locked && <PickHistoryPanel history={me.history} />}
 
       <footer className="text-center text-text-dim text-[11.5px] mt-10 font-mono">
         GEMINI&apos;S LAST MAN STANDING · one net, three shots, no excuses

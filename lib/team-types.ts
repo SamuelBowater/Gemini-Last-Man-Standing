@@ -6,6 +6,7 @@ export interface TeamGameState {
   phase: Phase;
   season: string;
   pickDeadline: string | null;
+  locked: boolean;
 }
 
 export interface TeamPick {
