@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, LoadingScreen, Modal } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Modal } from "@/components/ui";
 import { ChangePinPanel } from "@/components/change-pin-panel";
 import type { StateResponse, Participant } from "@/lib/types";
 
@@ -342,6 +342,25 @@ export default function Landing() {
     Promise.all([refresh(), wait(1200)]).finally(() => setLoading(false));
   }, [refresh]);
 
+  if (loading) {
+    return (
+      <div
+        className="fixed inset-0 flex flex-col items-center justify-center gap-4 text-center bg-cover bg-center"
+        style={{ backgroundImage: "url(/loading-bg.jpg)" }}
+      >
+        <div className="absolute inset-0 bg-black/55" />
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-4 border-white/25" />
+          <div className="absolute inset-0 rounded-full border-4 border-white border-t-transparent animate-spin" />
+          <div className="absolute inset-0 flex items-center justify-center text-2xl">⚽</div>
+        </div>
+        <div className="relative text-white/90 text-[13px] font-mono tracking-wide">
+          Checking who&apos;s logged in…
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[880px] mx-auto px-4 pb-24 pt-10">
       <div className="flex justify-end mb-2">
@@ -363,9 +382,7 @@ export default function Landing() {
         </p>
       </div>
 
-      {loading ? (
-        <LoadingScreen label="Checking who's logged in…" />
-      ) : !state ? (
+      {!state ? (
         <div className="text-center text-text-dim text-sm py-10">
           Couldn&apos;t load the pool. Refresh to try again.
         </div>
