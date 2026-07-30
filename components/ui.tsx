@@ -155,14 +155,17 @@ export function Modal({
 
 export function LoadingScreen({ label = "One sec…" }: { label?: string }) {
   return (
-    <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center">
+    <div
+      className="relative min-h-[60vh] flex flex-col items-center justify-center gap-4 text-center rounded-2xl overflow-hidden bg-cover bg-center"
+      style={{ backgroundImage: "url(/loading-bg.jpg)" }}
+    >
+      <div className="absolute inset-0 bg-black/55" />
       <div className="relative w-16 h-16">
-        <div className="absolute inset-0 rounded-full border-4 border-accent-soft" />
-        <div className="absolute inset-0 rounded-full border-4 border-accent border-t-transparent animate-spin" />
+        <div className="absolute inset-0 rounded-full border-4 border-white/25" />
+        <div className="absolute inset-0 rounded-full border-4 border-white border-t-transparent animate-spin" />
         <div className="absolute inset-0 flex items-center justify-center text-2xl">⚽</div>
       </div>
-      <div className="font-display text-lg text-text">Gemini&apos;s Last Man Standing</div>
-      <div className="text-text-dim text-[13px]">{label}</div>
+      <div className="relative text-white/90 text-[13px] font-mono tracking-wide">{label}</div>
     </div>
   );
 }
