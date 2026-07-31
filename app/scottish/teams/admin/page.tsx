@@ -363,23 +363,25 @@ function TeamResultsPanel({
 
   const fetchSuggestions = useCallback(async () => {
     setSuggestLoading(true);
-    setSuggestMsg("");
+    setSuggestMsg("Syncing fixtures from TheSportsDB…");
     try {
+      await api("/api/admin/scot-sync-fixtures", { method: "POST" });
+      await fetchFixtures();
       const res = await api("/api/admin/scot-team-suggested-results");
       if (!res.ok) {
         setSuggestMsg(res.message || "Couldn't derive results from fixtures.");
       } else if (res.winningTeams.length === 0) {
-        setSuggestMsg("No finished matches yet for this gameweek.");
+        setSuggestMsg("Synced — no finished matches yet for this gameweek.");
         setWinningTeams([]);
       } else {
         setWinningTeams(res.winningTeams);
-        setSuggestMsg(`Derived ${res.winningTeams.length} winning team${res.winningTeams.length === 1 ? "" : "s"} from synced fixtures.`);
+        setSuggestMsg(`Synced and derived ${res.winningTeams.length} winning team${res.winningTeams.length === 1 ? "" : "s"}.`);
       }
     } catch (e) {
       setSuggestMsg((e as Error).message);
     }
     setSuggestLoading(false);
-  }, []);
+  }, [fetchFixtures]);
 
   useEffect(() => {
     fetchFixtures();
@@ -434,7 +436,7 @@ function TeamResultsPanel({
           disabled={suggestLoading}
           className="text-[12px] text-accent hover:underline disabled:opacity-40"
         >
-          {suggestLoading ? "Deriving from fixtures…" : "🔮 Suggest from fixtures"}
+          {suggestLoading ? "Syncing & deriving…" : "🔄 Sync & suggest results"}
         </button>
         {suggestMsg && <div className="text-[11.5px] text-text-dim">{suggestMsg}</div>}
       </div>
@@ -445,12 +447,13 @@ function TeamResultsPanel({
           {fixtures.map((f, i) => {
             const finished = f.status === "FINISHED";
             const hasScore = f.homeScore !== null && f.awayScore !== null;
+            const isDraw = finished && hasScore && f.homeScore === f.awayScore;
             return (
               <div key={i} className="bg-bg-deep border border-line rounded-lg px-3.5 py-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <TeamToggle
                     team={f.home}
-                    enabled={finished && hasScore}
+                    enabled={finished && hasScore && !isDraw}
                     selected={winnerSet.has(f.home.toLowerCase())}
                     onClick={() => toggleTeam(f.home)}
                   />
@@ -459,7 +462,7 @@ function TeamResultsPanel({
                   </span>
                   <TeamToggle
                     team={f.away}
-                    enabled={finished && hasScore}
+                    enabled={finished && hasScore && !isDraw}
                     selected={winnerSet.has(f.away.toLowerCase())}
                     onClick={() => toggleTeam(f.away)}
                   />
@@ -467,6 +470,11 @@ function TeamResultsPanel({
                 {!finished && (
                   <div className="text-[11px] text-text-dim mt-1.5">
                     {f.status === "POSTPONED" || f.status === "CANCELLED" ? f.status : "Not played yet"}
+                  </div>
+                )}
+                {isDraw && (
+                  <div className="text-[11px] text-text-dim mt-1.5">
+                    🤝 Draw — no team wins, both picks are eliminated automatically.
                   </div>
                 )}
               </div>

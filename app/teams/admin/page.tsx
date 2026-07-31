@@ -417,12 +417,13 @@ function TeamResultsPanel({
           {fixtures.map((f, i) => {
             const finished = f.status === "FINISHED" || f.status === "AWARDED";
             const hasScore = f.homeScore !== null && f.awayScore !== null;
+            const isDraw = finished && hasScore && f.homeScore === f.awayScore;
             return (
               <div key={i} className="bg-bg-deep border border-line rounded-lg px-3.5 py-3">
                 <div className="flex items-center justify-between gap-2 flex-wrap">
                   <TeamToggle
                     team={f.home}
-                    enabled={finished && hasScore}
+                    enabled={finished && hasScore && !isDraw}
                     selected={winnerSet.has(f.home.toLowerCase())}
                     onClick={() => toggleTeam(f.home)}
                   />
@@ -431,7 +432,7 @@ function TeamResultsPanel({
                   </span>
                   <TeamToggle
                     team={f.away}
-                    enabled={finished && hasScore}
+                    enabled={finished && hasScore && !isDraw}
                     selected={winnerSet.has(f.away.toLowerCase())}
                     onClick={() => toggleTeam(f.away)}
                   />
@@ -439,6 +440,11 @@ function TeamResultsPanel({
                 {!finished && (
                   <div className="text-[11px] text-text-dim mt-1.5">
                     {f.status === "POSTPONED" || f.status === "CANCELLED" ? f.status : "Not played yet"}
+                  </div>
+                )}
+                {isDraw && (
+                  <div className="text-[11px] text-text-dim mt-1.5">
+                    🤝 Draw — no team wins, both picks are eliminated automatically.
                   </div>
                 )}
               </div>

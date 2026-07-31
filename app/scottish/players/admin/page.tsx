@@ -498,9 +498,10 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
 
   const fetchSuggestions = useCallback(async () => {
     setSuggestLoading(true);
-    setSuggestMsg("");
+    setSuggestMsg("Syncing fixtures from TheSportsDB…");
     setSuggested([]);
     try {
+      await api("/api/admin/scot-sync-fixtures", { method: "POST" });
       const res = await api("/api/admin/scot-suggested-scorers");
       if (!res.ok) {
         setSuggestMsg(res.message || "Couldn't derive scorers from synced fixtures.");
@@ -609,7 +610,7 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
           disabled={suggestLoading}
           className="text-[12px] text-accent hover:underline disabled:opacity-40"
         >
-          {suggestLoading ? "Checking synced data…" : "🔮 Check synced data"}
+          {suggestLoading ? "Syncing & checking…" : "🔄 Sync & check scorers"}
         </button>
         {suggested.length === 0 && suggestMsg && <div className="text-[11.5px] text-text-dim">{suggestMsg}</div>}
       </div>
