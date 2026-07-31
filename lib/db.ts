@@ -222,22 +222,6 @@ export function ensureSchema(): Promise<void> {
         applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
 
-      CREATE TABLE IF NOT EXISTS scot_players (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        team TEXT NOT NULL,
-        position TEXT NOT NULL,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        UNIQUE (name, team)
-      );
-
-      CREATE TABLE IF NOT EXISTS scot_player_sync_meta (
-        id INTEGER PRIMARY KEY DEFAULT 1,
-        last_synced_at TIMESTAMPTZ,
-        last_error TEXT,
-        CONSTRAINT single_row_scot_player_sync CHECK (id = 1)
-      );
-      INSERT INTO scot_player_sync_meta (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
     `)
       .then(() => undefined)
       .catch((err) => {

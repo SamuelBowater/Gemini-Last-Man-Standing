@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { ChangePinPanel } from "@/components/change-pin-panel";
@@ -531,41 +531,116 @@ function PlayerPicker({
   candidates: LivePlayer[];
 }) {
   const [open, setOpen] = useState(false);
-  const query = value.trim().toLowerCase();
-  const filtered = (
-    query ? candidates.filter((p) => p.name.toLowerCase().includes(query)) : candidates
-  ).slice(0, 8);
+  const [query, setQuery] = useState("");
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const groups = useMemo(() => {
+    const byTeam = new Map<string, LivePlayer[]>();
+    for (const p of candidates) {
+      const team = p.team || "Unknown club";
+      if (!byTeam.has(team)) byTeam.set(team, []);
+      byTeam.get(team)!.push(p);
+    }
+    return Array.from(byTeam.entries())
+      .map(([team, teamPlayers]) => ({
+        team,
+        players: [...teamPlayers].sort((a, b) => a.name.localeCompare(b.name)),
+      }))
+      .sort((a, b) => a.team.localeCompare(b.team));
+  }, [candidates]);
+
+  const q = query.trim().toLowerCase();
+  const filteredGroups = q
+    ? groups
+        .map((g) => ({
+          team: g.team,
+          players: g.team.toLowerCase().includes(q)
+            ? g.players
+            : g.players.filter((p) => p.name.toLowerCase().includes(q)),
+        }))
+        .filter((g) => g.players.length > 0)
+    : groups;
+
+  function select(name: string) {
+    onChange(name);
+    setOpen(false);
+    setQuery("");
+  }
 
   return (
-    <div className="relative">
-      <input
-        autoComplete="off"
-        placeholder="Type a player name…"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
-        className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3.5 py-3 text-[15px] focus:outline-none focus:border-accent"
-      />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-10 mt-1 w-full bg-panel border border-line-strong rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
-          {filtered.map((p) => (
-            <button
-              key={p.name}
-              type="button"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => {
-                onChange(p.name);
-                setOpen(false);
-              }}
-              className="w-full flex justify-between items-center gap-2 px-3.5 py-2.5 text-left hover:bg-bg-deep transition"
-            >
-              <span className="truncate">
-                <span className="font-medium">{p.name}</span>
-                {p.team && <span className="text-text-dim text-[12px]"> · {p.team}</span>}
-              </span>
-            </button>
-          ))}
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex justify-between items-center gap-2 bg-bg-deep border border-line-strong text-text rounded-lg px-3.5 py-3 text-[15px] text-left focus:outline-none focus:border-accent"
+      >
+        <span className={value ? "truncate" : "truncate text-[#9fb3ab]"}>
+          {value || "Select a team, then a player…"}
+        </span>
+        <span className="text-text-dim text-[11px] shrink-0">{open ? "▲" : "▾"}</span>
+      </button>
+      {open && (
+        <div className="absolute z-10 mt-1 w-full bg-panel border border-line-strong rounded-xl shadow-lg overflow-hidden">
+          <div className="p-2 border-b border-line">
+            <input
+              autoComplete="off"
+              autoFocus
+              placeholder="Search team or player…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full bg-bg-deep border border-line-strong text-text placeholder:text-[#9fb3ab] rounded-lg px-3 py-2 text-[13px] focus:outline-none focus:border-accent"
+            />
+          </div>
+          <div className="max-h-72 overflow-y-auto">
+            {filteredGroups.length === 0 ? (
+              <div className="px-3.5 py-3 text-[13px] text-text-dim">No matches.</div>
+            ) : (
+              filteredGroups.map((g) => {
+                const isExpanded = q ? true : expandedTeam === g.team;
+                return (
+                  <div key={g.team} className="border-b border-line last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => setExpandedTeam((old) => (old === g.team ? null : g.team))}
+                      className="w-full flex justify-between items-center gap-2 px-3.5 py-2.5 text-left hover:bg-bg-deep transition font-semibold text-[13px]"
+                    >
+                      <span>{g.team}</span>
+                      <span className="text-text-dim text-[11px]">
+                        {isExpanded ? "▲" : `${g.players.length} ▾`}
+                      </span>
+                    </button>
+                    {isExpanded && (
+                      <div className="bg-bg-deep">
+                        {g.players.map((p) => (
+                          <button
+                            key={p.name}
+                            type="button"
+                            onClick={() => select(p.name)}
+                            className={`w-full flex items-center gap-2 pl-7 pr-3.5 py-2 text-left hover:bg-panel transition text-[13px] ${
+                              p.name === value ? "text-accent font-medium" : "text-text"
+                            }`}
+                          >
+                            {p.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
     </div>

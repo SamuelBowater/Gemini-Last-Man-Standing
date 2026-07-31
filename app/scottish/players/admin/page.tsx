@@ -179,7 +179,6 @@ function AdminDashboard() {
 
       <CollapsibleSection title="⚙️ Fixtures & player data">
         <SyncPanel onChange={refresh} />
-        <PlayerDataPanel />
         <ManualFixturesPanel
           fixtures={fixtures}
           selectedGW={selectedGW}
@@ -224,39 +223,6 @@ function SyncPanel({ onChange }: { onChange: () => void }) {
       </Sub>
       <GhostButton onClick={syncNow} disabled={busy}>
         🔄 Sync fixtures &amp; scores
-      </GhostButton>
-      {msg && <div className="text-[13px] text-text-dim mt-2.5">{msg}</div>}
-    </Panel>
-  );
-}
-
-function PlayerDataPanel() {
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
-
-  async function syncNow() {
-    setBusy(true);
-    setMsg("Syncing squads from TheSportsDB (takes about a minute — one request per club)…");
-    try {
-      const res = await api("/api/admin/scot-sync-players", { method: "POST" });
-      setMsg(res.ok ? `Synced ${res.playersSynced} players.` : res.message);
-    } catch (e) {
-      setMsg((e as Error).message);
-    }
-    setBusy(false);
-  }
-
-  return (
-    <Panel>
-      <PanelTitle>Player data</PanelTitle>
-      <Sub>
-        Pulls each club&apos;s squad (name &amp; position) from TheSportsDB&apos;s free API — powers
-        the autocomplete on the pick form and the scorer picker below. Free tier returns a
-        top-10-ish list per club rather than a full squad, so it&apos;s a helpful shortlist, not
-        exhaustive — players can still type any name by hand.
-      </Sub>
-      <GhostButton onClick={syncNow} disabled={busy}>
-        🔄 Sync player data
       </GhostButton>
       {msg && <div className="text-[13px] text-text-dim mt-2.5">{msg}</div>}
     </Panel>

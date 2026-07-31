@@ -1,16 +1,10 @@
 import { NextResponse } from "next/server";
-import { pool, ensureSchema } from "@/lib/db";
+import { SCOT_SQUADS } from "@/lib/scotSquads";
 import { withErrors } from "@/lib/api-wrapper";
 
 export const GET = withErrors(async () => {
-  await ensureSchema();
-
-  const { rows } = await pool.query(
-    `SELECT name, team, position FROM scot_players ORDER BY name ASC`
-  );
-
-  const players = rows.map((r) => ({
-    ...r,
+  const players = SCOT_SQUADS.map((p) => ({
+    ...p,
     status: "available" as const,
     news: "",
     chanceOfPlaying: null,
