@@ -103,6 +103,7 @@ export interface GameweekReport {
   gw: number;
   currentGW: number;
   resolved: boolean;
+  picksVisible: boolean;
   scorers: string[];
   players: GameweekPlayerRow[];
   poolStats: { total: number; stillStanding: number; eliminated: number };

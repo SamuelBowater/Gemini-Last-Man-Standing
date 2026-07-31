@@ -114,6 +114,8 @@ export default function ScottishStandingsPage() {
                   Scorers:{" "}
                   {report.scorers.length > 0 ? report.scorers.map(titleCase).join(", ") : "Nobody scored."}
                 </>
+              ) : report.picksVisible ? (
+                <>Picks are locked for gameweek {gw} — waiting on the admin to log results.</>
               ) : (
                 <>
                   Gameweek {gw} hasn&apos;t been resolved yet — picks stay hidden until the
@@ -136,9 +138,9 @@ export default function ScottishStandingsPage() {
                   {report.players.map((p) => (
                     <tr key={p.id} className="border-b border-line">
                       <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">{p.name}</td>
-                      <PickCell resolved={report.resolved} name={p.forward} scored={p.forwardScored} submitted={p.submitted} />
-                      <PickCell resolved={report.resolved} name={p.midfielder} scored={p.midfielderScored} submitted={p.submitted} />
-                      <PickCell resolved={report.resolved} name={p.defender} scored={p.defenderScored} submitted={p.submitted} />
+                      <PickCell revealed={report.picksVisible} name={p.forward} scored={p.forwardScored} submitted={p.submitted} />
+                      <PickCell revealed={report.picksVisible} name={p.midfielder} scored={p.midfielderScored} submitted={p.submitted} />
+                      <PickCell revealed={report.picksVisible} name={p.defender} scored={p.defenderScored} submitted={p.submitted} />
                       <td className="py-2.5">
                         <Badge tone={p.overallStatus === "eliminated" ? "out" : "alive"}>
                           {p.overallStatus === "eliminated" ? "Eliminated" : "Active"}
@@ -153,7 +155,7 @@ export default function ScottishStandingsPage() {
         )}
 
         {tab === "topPicks" &&
-          (report.resolved && report.topPicks ? (
+          (report.picksVisible && report.topPicks ? (
             <div className="grid sm:grid-cols-3 gap-5">
               <TopPickColumn title="Forwards" picks={report.topPicks.forward} />
               <TopPickColumn title="Midfielders" picks={report.topPicks.midfielder} />
@@ -170,17 +172,17 @@ export default function ScottishStandingsPage() {
 }
 
 function PickCell({
-  resolved,
+  revealed,
   name,
   scored,
   submitted,
 }: {
-  resolved: boolean;
+  revealed: boolean;
   name: string | null;
   scored: boolean | null;
   submitted: boolean;
 }) {
-  if (!resolved) {
+  if (!revealed) {
     return (
       <td className="py-2.5 pr-3 whitespace-nowrap text-text-dim">{submitted ? "🔒 Submitted" : "-"}</td>
     );

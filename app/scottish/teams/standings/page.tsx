@@ -144,6 +144,8 @@ export default function ScottishTeamStandingsPage() {
                   Winning teams:{" "}
                   {report.winningTeams.length > 0 ? report.winningTeams.map(titleCase).join(", ") : "Nobody won."}
                 </>
+              ) : report.picksVisible ? (
+                <>Picks are locked for gameweek {gw} — waiting on the admin to log results.</>
               ) : (
                 <>
                   Gameweek {gw} hasn&apos;t been resolved yet — picks stay hidden until the
@@ -164,7 +166,7 @@ export default function ScottishTeamStandingsPage() {
                   {report.rows.map((r) => (
                     <tr key={r.id} className="border-b border-line">
                       <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">{r.name}</td>
-                      <PickCell resolved={report.resolved} team={r.team} result={r.result} submitted={r.submitted} />
+                      <PickCell revealed={report.picksVisible} team={r.team} result={r.result} submitted={r.submitted} />
                       <td className="py-2.5">
                         <Badge tone={r.overallStatus === "eliminated" ? "out" : "alive"}>
                           {r.overallStatus === "eliminated" ? "Eliminated" : "Active"}
@@ -179,7 +181,7 @@ export default function ScottishTeamStandingsPage() {
         )}
 
         {tab === "topPicks" &&
-          (report.resolved && report.topPicks ? (
+          (report.picksVisible && report.topPicks ? (
             <TopPickList picks={report.topPicks} />
           ) : (
             <EmptyNote>
@@ -192,17 +194,17 @@ export default function ScottishTeamStandingsPage() {
 }
 
 function PickCell({
-  resolved,
+  revealed,
   team,
   result,
   submitted,
 }: {
-  resolved: boolean;
+  revealed: boolean;
   team: string | null;
   result: TeamGameweekReport["rows"][number]["result"];
   submitted: boolean;
 }) {
-  if (!resolved) {
+  if (!revealed) {
     return (
       <td className="py-2.5 pr-3 whitespace-nowrap text-text-dim">{submitted ? "🔒 Submitted" : "-"}</td>
     );

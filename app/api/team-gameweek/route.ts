@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
+import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
 import type { TeamGameweekReport, TeamGameweekRow, TeamTopPick } from "@/lib/team-types";
 import { deriveTeamResult, findTeamFixture, type FixtureLike } from "@/lib/teams";
@@ -33,13 +34,20 @@ export const GET = withErrors(async (req: NextRequest) => {
   const winningTeamsDisplay: string[] = resolved ? resultRows[0].winning_teams : [];
 
   const { rows: fixtures } = await pool.query(
-    `SELECT home, away, status, home_score AS "homeScore", away_score AS "awayScore"
+    `SELECT home, away, kickoff, status, home_score AS "homeScore", away_score AS "awayScore"
      FROM fixtures WHERE season = $1 AND gw = $2`,
     [gsRows[0].season, gw]
   );
 
-  // Only reveal pick contents once the gameweek is resolved — otherwise
-  // players could copy each other's live picks before they lock in.
+  // Picks reveal once the gameweek is resolved, OR once its pick deadline has
+  // passed — after the deadline nobody can submit or change a pick anymore,
+  // so there's no more risk of copying, even if the admin hasn't applied
+  // results yet. The win/draw/loss result is derived straight from the
+  // synced fixture score, so it's safe to reveal alongside the pick itself.
+  const deadline = computePickDeadline(fixtures.map((f) => f.kickoff));
+  const picksLocked = Boolean(deadline && Date.now() >= new Date(deadline).getTime());
+  const picksVisible = resolved || picksLocked;
+
   const { rows } = await pool.query(
     `SELECT p.id, p.name, p.team_status AS status, p.team_eliminated_gw AS "eliminatedGW",
             tp.team
@@ -58,7 +66,7 @@ export const GET = withErrors(async (req: NextRequest) => {
 
   const rowsMapped: TeamGameweekRow[] = rows.map((r) => {
     const hasPick = r.team !== null;
-    const team = resolved ? r.team : null;
+    const team = picksVisible ? r.team : null;
     const statusAsOfGW: "alive" | "eliminated" =
       r.eliminatedGW !== null && r.eliminatedGW <= gw ? "eliminated" : "alive";
     const fixture = hasPick ? findTeamFixture(fixtures, r.team) : undefined;
@@ -68,7 +76,7 @@ export const GET = withErrors(async (req: NextRequest) => {
       overallStatus: statusAsOfGW,
       submitted: hasPick,
       team,
-      result: resolved && hasPick ? deriveTeamResult(fixture, r.team) : null,
+      result: picksVisible && hasPick ? deriveTeamResult(fixture, r.team) : null,
       eliminatedThisGW: r.eliminatedGW === gw,
     };
   });
@@ -81,12 +89,13 @@ export const GET = withErrors(async (req: NextRequest) => {
   );
   const poolStats = statRows[0];
 
-  const topPicks = resolved ? await topTeamPicks(gw, fixtures) : null;
+  const topPicks = picksVisible ? await topTeamPicks(gw, fixtures) : null;
 
   const report: TeamGameweekReport = {
     gw,
     currentGW,
     resolved,
+    picksVisible,
     winningTeams: [...winningTeamsDisplay].sort(),
     rows: rowsMapped,
     poolStats,

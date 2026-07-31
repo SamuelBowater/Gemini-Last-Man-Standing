@@ -54,6 +54,7 @@ export interface TeamGameweekReport {
   gw: number;
   currentGW: number;
   resolved: boolean;
+  picksVisible: boolean;
   winningTeams: string[];
   rows: TeamGameweekRow[];
   poolStats: { total: number; stillStanding: number; eliminated: number };
