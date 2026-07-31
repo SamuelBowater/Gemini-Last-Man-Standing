@@ -1,4 +1,7 @@
+import { pool } from "@/lib/db";
+
 const THESPORTSDB_KEY = process.env.THESPORTSDB_API_KEY || "123";
+const SCOT_SEASON = "spfl-2026-27";
 const SCOT_LEAGUE_ID = "4330";
 const SCOT_SEASON_LABEL = "2026-2027";
 
@@ -111,5 +114,44 @@ export async function fetchGameweekGoalScorers(externalIds: string[]): Promise<s
     await wait(300);
   }
   return Array.from(new Set(names)).sort();
+}
+
+/** Fetches and upserts the whole Scottish Premiership season's fixtures/scores.
+ * Shared by the manual admin "sync now" button and the nightly cron job. */
+export async function syncScotFixtures(): Promise<{ ok: boolean; fixturesSynced: number; message?: string }> {
+  let fixtures;
+  try {
+    fixtures = await fetchScotFixtures();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Failed to reach TheSportsDB.";
+    return { ok: false, fixturesSynced: 0, message };
+  }
+
+  let count = 0;
+  for (const f of fixtures) {
+    await pool.query(
+      `INSERT INTO fixtures (season, gw, home, away, kickoff, venue, status, home_score, away_score, source, external_id)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'api', $10)
+       ON CONFLICT (season, gw, home, away)
+       DO UPDATE SET kickoff = EXCLUDED.kickoff, venue = EXCLUDED.venue, status = EXCLUDED.status,
+         home_score = EXCLUDED.home_score, away_score = EXCLUDED.away_score, source = 'api',
+         external_id = EXCLUDED.external_id`,
+      [
+        SCOT_SEASON,
+        f.gw,
+        f.home,
+        f.away,
+        f.kickoff,
+        f.venue,
+        f.status,
+        f.homeScore,
+        f.awayScore,
+        f.externalId,
+      ]
+    );
+    count++;
+  }
+
+  return { ok: true, fixturesSynced: count };
 }
 

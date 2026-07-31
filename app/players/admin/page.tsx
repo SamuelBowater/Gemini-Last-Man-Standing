@@ -263,7 +263,8 @@ function FixturesSourcePanel({
         and CRON_SECRET in your environment — the Vercel Cron job in vercel.json handles the
         rest). It always fetches whatever season football-data.org currently considers
         &quot;current&quot; for the Premier League, so there&apos;s no season parameter to configure.
-        You can also trigger a sync manually here.
+        The same nightly run also refreshes the Scottish Premiership trial&apos;s fixtures from
+        TheSportsDB. You can also trigger both manually here.
       </Sub>
       <div className="mb-2.5">
         <div className="text-[11px] text-text-dim mb-1 font-mono">Official site season code (for the premierleague.com link only)</div>

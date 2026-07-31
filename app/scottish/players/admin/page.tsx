@@ -218,8 +218,9 @@ function SyncPanel({ onChange }: { onChange: () => void }) {
       <PanelTitle>Sync fixtures &amp; scores</PanelTitle>
       <Sub>
         Pulls the whole Scottish Premiership season from TheSportsDB&apos;s free API in one go —
-        fixtures, kick-off times and final scores. Only some gameweeks may be published this far
-        ahead, so re-run this after each round finishes to pick up new fixtures and results.
+        fixtures, kick-off times and final scores. This now also runs automatically once a day
+        (00:00 UTC, piggybacking on the main season&apos;s cron job) — use this button if you need
+        fresher data sooner than that.
       </Sub>
       <GhostButton onClick={syncNow} disabled={busy}>
         🔄 Sync fixtures &amp; scores

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { isAdmin } from "@/lib/session";
 import { FD_COMPETITION_CODE } from "@/lib/data";
+import { syncScotFixtures } from "@/lib/scot-data";
 import { withErrors } from "@/lib/api-wrapper";
 
 async function authorized(req: NextRequest) {
@@ -27,9 +28,18 @@ export const GET = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   }
 
+  // Runs alongside the English sync below so both leagues update from the same
+  // nightly cron trigger — Vercel's free plan caps cron jobs at 2, so this avoids
+  // needing a third schedule entry just for the Scottish Premiership.
+  const scot = await syncScotFixtures().catch((err) => ({
+    ok: false,
+    fixturesSynced: 0,
+    message: err instanceof Error ? err.message : "Scottish fixtures sync failed.",
+  }));
+
   const apiKey = process.env.FOOTBALL_DATA_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "FOOTBALL_DATA_API_KEY isn't set." }, { status: 500 });
+    return NextResponse.json({ error: "FOOTBALL_DATA_API_KEY isn't set.", scot }, { status: 500 });
   }
 
   const { rows: gsRows } = await pool.query("SELECT season FROM game_state WHERE id = 1");
@@ -65,7 +75,7 @@ export const GET = withErrors(async (req: NextRequest) => {
     await pool.query("UPDATE sync_meta SET last_error = $1 WHERE id = 1", [
       `${message} ${JSON.stringify(diagnostics)}`.slice(0, 2000),
     ]);
-    return NextResponse.json({ ok: false, fixturesSynced: 0, message, diagnostics }, { status: 200 });
+    return NextResponse.json({ ok: false, fixturesSynced: 0, message, diagnostics, scot }, { status: 200 });
   }
 
   let count = 0;
@@ -97,5 +107,5 @@ export const GET = withErrors(async (req: NextRequest) => {
   }
 
   await pool.query("UPDATE sync_meta SET last_synced_at = now(), last_error = NULL WHERE id = 1");
-  return NextResponse.json({ ok: true, fixturesSynced: count, diagnostics });
+  return NextResponse.json({ ok: true, fixturesSynced: count, diagnostics, scot });
 });
