@@ -93,7 +93,7 @@ export default function ScottishPlayersPage() {
     <div className="max-w-[760px] mx-auto px-4 pb-24 pt-7">
       <div className="bg-accent-soft border border-accent/30 text-accent rounded-xl px-4 py-3 mb-6 text-[13px] text-center">
         🏴 Trial weekend — Scottish Premiership. Fixtures &amp; scorer suggestions are synced from
-        TheSportsDB; picks are free-typed since there&apos;s no live squad list for this league.
+        TheSportsDB; pick your squad by team below.
       </div>
 
       <Hero
@@ -700,7 +700,7 @@ function PickForm({
   }
 
   return (
-    <div className="bg-panel border border-line rounded-[10px] overflow-hidden mb-5">
+    <div className="bg-panel border border-line rounded-[10px] mb-5">
       <div className="px-5 pt-5">
         <PanelTitle>Your picks — Gameweek {gameState.currentGW}</PanelTitle>
         <Sub>
@@ -756,7 +756,7 @@ function PickForm({
             </div>
           );
         })}
-        <div className="px-5 py-4 bg-bg-deep flex flex-col items-end gap-2">
+        <div className="px-5 py-4 bg-bg-deep rounded-b-[10px] flex flex-col items-end gap-2">
           {error && <div className="text-red text-[13px] self-stretch">{error}</div>}
           {notice && <div className="text-green-alive text-[13px] self-stretch">✅ {notice}</div>}
           <div className="flex gap-2.5">
