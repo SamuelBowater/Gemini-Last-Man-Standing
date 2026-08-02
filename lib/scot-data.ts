@@ -151,31 +151,40 @@ export async function syncScotFixtures(): Promise<{ ok: boolean; fixturesSynced:
     return { ok: false, fixturesSynced: 0, message };
   }
 
-  let count = 0;
+  // One batched multi-row upsert instead of one round-trip per fixture.
+  const values: unknown[] = [];
+  const valueRows: string[] = [];
   for (const f of fixtures) {
+    const base = values.length;
+    valueRows.push(
+      `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, 'api', $${base + 10})`
+    );
+    values.push(
+      SCOT_SEASON,
+      f.gw,
+      f.home,
+      f.away,
+      f.kickoff,
+      f.venue,
+      f.status,
+      f.homeScore,
+      f.awayScore,
+      f.externalId
+    );
+  }
+
+  if (valueRows.length > 0) {
     await pool.query(
       `INSERT INTO fixtures (season, gw, home, away, kickoff, venue, status, home_score, away_score, source, external_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'api', $10)
+       VALUES ${valueRows.join(", ")}
        ON CONFLICT (season, gw, home, away)
        DO UPDATE SET kickoff = EXCLUDED.kickoff, venue = EXCLUDED.venue, status = EXCLUDED.status,
          home_score = EXCLUDED.home_score, away_score = EXCLUDED.away_score, source = 'api',
          external_id = EXCLUDED.external_id`,
-      [
-        SCOT_SEASON,
-        f.gw,
-        f.home,
-        f.away,
-        f.kickoff,
-        f.venue,
-        f.status,
-        f.homeScore,
-        f.awayScore,
-        f.externalId,
-      ]
+      values
     );
-    count++;
   }
 
-  return { ok: true, fixturesSynced: count };
+  return { ok: true, fixturesSynced: valueRows.length };
 }
 

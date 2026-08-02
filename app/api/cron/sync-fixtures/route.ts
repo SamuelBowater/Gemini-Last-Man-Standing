@@ -78,33 +78,45 @@ export const GET = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ ok: false, fixturesSynced: 0, message, diagnostics, scot }, { status: 200 });
   }
 
-  let count = 0;
+  // One batched multi-row upsert instead of one round-trip per match — with
+  // a full season (~380 matches) that was taking 30+ seconds sequentially,
+  // long enough to trip an external scheduler's request timeout.
+  const values: unknown[] = [];
+  const valueRows: string[] = [];
   for (const match of data.matches) {
     const gw = match.matchday;
     const home = match.homeTeam?.name;
     const away = match.awayTeam?.name;
     if (gw === null || gw === undefined || !home || !away) continue;
 
+    const base = values.length;
+    valueRows.push(
+      `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, 'api')`
+    );
+    values.push(
+      gs.season,
+      gw,
+      home,
+      away,
+      match.utcDate || null,
+      match.venue || null,
+      match.status || null,
+      match.score?.fullTime?.home ?? null,
+      match.score?.fullTime?.away ?? null
+    );
+  }
+
+  if (valueRows.length > 0) {
     await pool.query(
       `INSERT INTO fixtures (season, gw, home, away, kickoff, venue, status, home_score, away_score, source)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'api')
+       VALUES ${valueRows.join(", ")}
        ON CONFLICT (season, gw, home, away)
        DO UPDATE SET kickoff = EXCLUDED.kickoff, venue = EXCLUDED.venue, status = EXCLUDED.status,
          home_score = EXCLUDED.home_score, away_score = EXCLUDED.away_score, source = 'api'`,
-      [
-        gs.season,
-        gw,
-        home,
-        away,
-        match.utcDate || null,
-        match.venue || null,
-        match.status || null,
-        match.score?.fullTime?.home ?? null,
-        match.score?.fullTime?.away ?? null,
-      ]
+      values
     );
-    count++;
   }
+  const count = valueRows.length;
 
   await pool.query("UPDATE sync_meta SET last_synced_at = now(), last_error = NULL WHERE id = 1");
   return NextResponse.json({ ok: true, fixturesSynced: count, diagnostics, scot });
