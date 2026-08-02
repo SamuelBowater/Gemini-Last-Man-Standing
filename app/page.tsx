@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, Modal } from "@/components/ui";
 import { ChangePinPanel } from "@/components/change-pin-panel";
+import { NotificationsSetup } from "@/components/notifications-setup";
 import type { StateResponse, Participant } from "@/lib/types";
 
 async function api(path: string, opts?: RequestInit) {
@@ -383,6 +384,8 @@ export default function Landing() {
           Two survival pools, one goal: outlast everyone else. Choose which one you&apos;re playing.
         </p>
       </div>
+
+      <NotificationsSetup loggedIn={!!state?.me} />
 
       {!state ? (
         <div className="text-center text-text-dim text-sm py-10">

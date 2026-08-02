@@ -222,6 +222,15 @@ export function ensureSchema(): Promise<void> {
         applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
 
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id SERIAL PRIMARY KEY,
+        participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+        endpoint TEXT NOT NULL UNIQUE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+
     `)
       .then(() => undefined)
       .catch((err) => {

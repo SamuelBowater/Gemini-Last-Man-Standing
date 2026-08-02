@@ -154,6 +154,7 @@ function AdminDashboard() {
       <SignupCodePanel signupCode={signupCode} onChange={refresh} />
       <PlayersPanel players={players} onChange={refresh} />
       <GamesPanel locked={locked} onChange={refresh} />
+      <NotificationsPanel />
       <DangerZone onChange={refresh} />
 
       <div className="text-center mt-8">
@@ -400,6 +401,109 @@ function GamesPanel({ locked, onChange }: { locked: boolean; onChange: () => voi
           <span className="font-semibold">🏴 Scottish Team Survival admin</span>
           <span className="text-accent text-[12px] font-semibold">→</span>
         </Link>
+      </div>
+    </Panel>
+  );
+}
+
+function NotificationsPanel() {
+  const [subscribers, setSubscribers] = useState<{ id: number; name: string }[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [testMsg, setTestMsg] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [sendMsg, setSendMsg] = useState("");
+  const [sendBusy, setSendBusy] = useState(false);
+
+  const loadSubscribers = useCallback(async () => {
+    const res = await api("/api/admin/push-subscribers");
+    setSubscribers(res.subscribers);
+    setSelectedId((old) => old ?? res.subscribers[0]?.id ?? null);
+  }, []);
+
+  useEffect(() => {
+    loadSubscribers();
+  }, [loadSubscribers]);
+
+  async function sendTest() {
+    if (!selectedId) return;
+    setTestBusy(true);
+    setTestMsg("");
+    try {
+      const res = await api("/api/admin/push-test", {
+        method: "POST",
+        body: JSON.stringify({ participantId: selectedId }),
+      });
+      setTestMsg(`Sent to ${res.sent}/${res.attempted} device(s).`);
+    } catch (e) {
+      setTestMsg((e as Error).message);
+    }
+    setTestBusy(false);
+  }
+
+  async function sendToEveryone() {
+    if (!title.trim() || !body.trim()) {
+      setSendMsg("Enter both a title and a message.");
+      return;
+    }
+    setSendBusy(true);
+    setSendMsg("");
+    try {
+      const res = await api("/api/admin/push-notify", { method: "POST", body: JSON.stringify({ title, body }) });
+      setSendMsg(`Sent to ${res.sent}/${res.attempted} device(s).`);
+      setTitle("");
+      setBody("");
+    } catch (e) {
+      setSendMsg((e as Error).message);
+    }
+    setSendBusy(false);
+  }
+
+  return (
+    <Panel>
+      <PanelTitle>🔔 Notifications</PanelTitle>
+      <Sub>
+        Players enable push notifications themselves from the home page. Test with one player
+        before sending an update to everyone.
+      </Sub>
+
+      <div className="mb-5">
+        <div className="text-[11px] text-text-dim uppercase tracking-wide mb-1.5">Send a test</div>
+        {subscribers.length === 0 ? (
+          <EmptyNote>No players have enabled notifications yet.</EmptyNote>
+        ) : (
+          <div className="flex gap-2.5">
+            <select
+              value={selectedId ?? ""}
+              onChange={(e) => setSelectedId(Number(e.target.value))}
+              className="flex-1 bg-bg-deep border border-line-strong text-text text-[14px] rounded-xl px-3.5 py-3 focus:outline-none focus:border-accent"
+            >
+              {subscribers.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+            <PrimaryButton onClick={sendTest} disabled={testBusy}>
+              {testBusy ? "…" : "Send test"}
+            </PrimaryButton>
+          </div>
+        )}
+        {testMsg && <div className="text-[13px] text-text-dim mt-2.5">{testMsg}</div>}
+      </div>
+
+      <div>
+        <div className="text-[11px] text-text-dim uppercase tracking-wide mb-1.5">Send to everyone</div>
+        <div className="flex flex-col gap-2.5">
+          <TextInput value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" />
+          <TextInput value={body} onChange={(e) => setBody(e.target.value)} placeholder="Message" />
+          <PrimaryButton onClick={sendToEveryone} disabled={sendBusy}>
+            {sendBusy ? "Sending…" : "📤 Send to everyone"}
+          </PrimaryButton>
+        </div>
+        {sendMsg && <div className="text-[13px] text-text-dim mt-2.5">{sendMsg}</div>}
       </div>
     </Panel>
   );
