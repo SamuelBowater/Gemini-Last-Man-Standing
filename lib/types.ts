@@ -86,6 +86,9 @@ export interface GameweekPlayerRow {
   forward: string | null;
   midfielder: string | null;
   defender: string | null;
+  forwardTeam: string | null;
+  midfielderTeam: string | null;
+  defenderTeam: string | null;
   forwardScored: boolean | null;
   midfielderScored: boolean | null;
   defenderScored: boolean | null;

@@ -63,6 +63,12 @@ export const GET = withErrors(async (req: NextRequest) => {
     [gw]
   );
 
+  const { rows: playerRows } = await pool.query(`SELECT name, team FROM players`);
+  const teamByPlayer = new Map<string, string>(
+    playerRows.map((p) => [String(p.name).toLowerCase(), p.team])
+  );
+  const teamFor = (name: string | null) => (name ? teamByPlayer.get(name.toLowerCase()) || null : null);
+
   const players: GameweekPlayerRow[] = rows.map((r) => {
     const hasPick = r.forward !== null;
     const forward = picksVisible ? r.forward : null;
@@ -81,6 +87,9 @@ export const GET = withErrors(async (req: NextRequest) => {
       forward,
       midfielder,
       defender,
+      forwardTeam: teamFor(forward),
+      midfielderTeam: teamFor(midfielder),
+      defenderTeam: teamFor(defender),
       forwardScored: resolved && hasPick ? scored(r.forward) : null,
       midfielderScored: resolved && hasPick ? scored(r.midfielder) : null,
       defenderScored: resolved && hasPick ? scored(r.defender) : null,

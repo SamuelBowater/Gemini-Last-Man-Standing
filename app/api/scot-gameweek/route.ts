@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { computePickDeadline } from "@/lib/game";
+import { SCOT_SQUADS } from "@/lib/scotSquads";
 import { withErrors } from "@/lib/api-wrapper";
 import type { GameweekPlayerRow, GameweekReport, TopPick } from "@/lib/types";
+
+const SCOT_TEAM_BY_PLAYER = new Map<string, string>(
+  SCOT_SQUADS.map((p) => [p.name.toLowerCase(), p.team])
+);
+const scotTeamFor = (name: string | null) => (name ? SCOT_TEAM_BY_PLAYER.get(name.toLowerCase()) || null : null);
 
 async function topPicksFor(
   gw: number,
@@ -78,6 +84,9 @@ export const GET = withErrors(async (req: NextRequest) => {
       forward,
       midfielder,
       defender,
+      forwardTeam: scotTeamFor(forward),
+      midfielderTeam: scotTeamFor(midfielder),
+      defenderTeam: scotTeamFor(defender),
       forwardScored: resolved && hasPick ? scored(r.forward) : null,
       midfielderScored: resolved && hasPick ? scored(r.midfielder) : null,
       defenderScored: resolved && hasPick ? scored(r.defender) : null,

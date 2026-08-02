@@ -168,9 +168,9 @@ export default function StandingsPage() {
                   {report.players.map((p) => (
                     <tr key={p.id} className="border-b border-line">
                       <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">{p.name}</td>
-                      <PickCell revealed={report.picksVisible} name={p.forward} scored={p.forwardScored} submitted={p.submitted} />
-                      <PickCell revealed={report.picksVisible} name={p.midfielder} scored={p.midfielderScored} submitted={p.submitted} />
-                      <PickCell revealed={report.picksVisible} name={p.defender} scored={p.defenderScored} submitted={p.submitted} />
+                      <PickCell revealed={report.picksVisible} name={p.forward} team={p.forwardTeam} scored={p.forwardScored} submitted={p.submitted} />
+                      <PickCell revealed={report.picksVisible} name={p.midfielder} team={p.midfielderTeam} scored={p.midfielderScored} submitted={p.submitted} />
+                      <PickCell revealed={report.picksVisible} name={p.defender} team={p.defenderTeam} scored={p.defenderScored} submitted={p.submitted} />
                       <td className="py-2.5">
                         <Badge tone={p.overallStatus === "eliminated" ? "out" : "alive"}>
                           {p.overallStatus === "eliminated" ? "Eliminated" : "Active"}
@@ -204,11 +204,13 @@ export default function StandingsPage() {
 function PickCell({
   revealed,
   name,
+  team,
   scored,
   submitted,
 }: {
   revealed: boolean;
   name: string | null;
+  team: string | null;
   scored: boolean | null;
   submitted: boolean;
 }) {
@@ -222,8 +224,11 @@ function PickCell({
   }
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap">
-      {name}
-      {scored ? " ⚽" : ""}
+      <div>
+        {name}
+        {scored ? " ⚽" : ""}
+      </div>
+      {team && <div className="text-[10.5px] text-text-dim font-normal">{team}</div>}
     </td>
   );
 }
