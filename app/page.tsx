@@ -335,9 +335,18 @@ export default function Landing() {
   const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [data, teamData] = await Promise.all([api("/api/state"), api("/api/team-state")]);
-    setState(data);
-    setTeamsLocked(teamData.gameState.locked);
+    try {
+      const [data, teamData] = await Promise.all([api("/api/state"), api("/api/team-state")]);
+      setState(data);
+      setTeamsLocked(teamData.gameState.locked);
+    } catch {
+      // Transient blip (e.g. the database waking from idle) — retry once
+      // before giving up, so a brief hiccup doesn't need a manual refresh.
+      await wait(1200);
+      const [data, teamData] = await Promise.all([api("/api/state"), api("/api/team-state")]);
+      setState(data);
+      setTeamsLocked(teamData.gameState.locked);
+    }
   }, []);
 
   useEffect(() => {

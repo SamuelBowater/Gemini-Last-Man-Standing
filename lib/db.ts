@@ -27,6 +27,22 @@ if (process.env.NODE_ENV !== "production") {
   globalForPool.pgPool = pool;
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Neon's serverless Postgres suspends its compute after a few idle minutes — the first
+ * query after that has to wake it back up, which occasionally fails outright rather than
+ * just being slow. One retry after a short pause covers that without masking real errors. */
+async function queryWithRetry(sql: string) {
+  try {
+    return await pool.query(sql);
+  } catch {
+    await wait(800);
+    return pool.query(sql);
+  }
+}
+
 let schemaReady: Promise<void> | null = null;
 
 /** Idempotent — safe to call at the top of every route. Only actually runs once per warm instance. */
@@ -39,8 +55,7 @@ export function ensureSchema(): Promise<void> {
     );
   }
   if (!schemaReady) {
-    schemaReady = pool
-      .query(`
+    schemaReady = queryWithRetry(`
       CREATE TABLE IF NOT EXISTS game_state (
         id INTEGER PRIMARY KEY DEFAULT 1,
         current_gw INTEGER NOT NULL DEFAULT 1,

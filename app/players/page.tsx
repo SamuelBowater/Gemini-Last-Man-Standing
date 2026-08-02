@@ -87,8 +87,14 @@ export default function Home() {
   const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
-    const data = await api("/api/state");
-    setState(data);
+    try {
+      setState(await api("/api/state"));
+    } catch {
+      // Transient blip (e.g. the database waking from idle) — retry once
+      // before giving up, so a brief hiccup doesn't need a manual refresh.
+      await wait(1200);
+      setState(await api("/api/state"));
+    }
   }, []);
 
   useEffect(() => {

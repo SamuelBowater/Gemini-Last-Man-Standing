@@ -58,8 +58,14 @@ export default function ScottishPlayersPage() {
   const [pinModalOpen, setPinModalOpen] = useState(false);
 
   const refresh = useCallback(async () => {
-    const data = await api("/api/scot-state");
-    setState(data);
+    try {
+      setState(await api("/api/scot-state"));
+    } catch {
+      // Transient blip (e.g. the database waking from idle) — retry once
+      // before giving up, so a brief hiccup doesn't need a manual refresh.
+      await wait(1200);
+      setState(await api("/api/scot-state"));
+    }
   }, []);
 
   useEffect(() => {
