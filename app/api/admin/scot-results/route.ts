@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { isAdmin } from "@/lib/session";
+import { sendPushToGamePlayers } from "@/lib/push";
 import { withErrors } from "@/lib/api-wrapper";
 
 export const POST = withErrors(async (req: NextRequest) => {
@@ -76,6 +77,20 @@ export const POST = withErrors(async (req: NextRequest) => {
     ]);
 
     await client.query("COMMIT");
+
+    try {
+      await sendPushToGamePlayers("can_play_scot_players", {
+        title: `🏴 Scottish Player Picks — GW${gs.current_gw} results are in`,
+        body:
+          eliminatedIds.length > 0
+            ? `${eliminatedIds.length} eliminated this week. Check if you survived!`
+            : "Everyone survived this week!",
+        url: "/scottish/players/standings",
+      });
+    } catch {
+      // never let a notification failure mask a successful results apply
+    }
+
     return NextResponse.json({ ok: true, phase: newPhase, currentGW: newGW, eliminated: eliminatedIds.length });
   } catch (err) {
     await client.query("ROLLBACK");

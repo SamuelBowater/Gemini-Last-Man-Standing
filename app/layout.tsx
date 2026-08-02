@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Last Man Standing",
+    title: "Gemini Last-Man-Standing",
   },
 };
 

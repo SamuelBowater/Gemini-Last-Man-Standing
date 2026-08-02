@@ -74,3 +74,23 @@ export async function sendPushToAll(payload: PushPayload) {
   }
   return { attempted: rows.length, sent };
 }
+
+/** Sends only to participants who play the given game (e.g. can_play_teams) —
+ * used for game-specific auto-notifications so people who don't play a game
+ * don't get told its results are in. */
+type CanPlayColumn = "can_play_players" | "can_play_teams" | "can_play_scot_players" | "can_play_scot_teams";
+
+export async function sendPushToGamePlayers(canPlayColumn: CanPlayColumn, payload: PushPayload) {
+  ensureConfigured();
+  const { rows } = await pool.query<SubscriptionRow>(
+    `SELECT ps.id, ps.endpoint, ps.p256dh, ps.auth
+     FROM push_subscriptions ps
+     JOIN participants p ON p.id = ps.participant_id
+     WHERE p.${canPlayColumn} = true`
+  );
+  let sent = 0;
+  for (const sub of rows) {
+    if (await sendToSubscription(sub, payload)) sent++;
+  }
+  return { attempted: rows.length, sent };
+}

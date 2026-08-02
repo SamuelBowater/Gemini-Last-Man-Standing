@@ -53,6 +53,8 @@ export function ensureSchema(): Promise<void> {
       INSERT INTO game_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS signup_code TEXT;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE game_state ADD COLUMN IF NOT EXISTS reminder_sent_gw INTEGER;
+      ALTER TABLE game_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
 
       CREATE TABLE IF NOT EXISTS participants (
         id SERIAL PRIMARY KEY,
@@ -156,6 +158,8 @@ export function ensureSchema(): Promise<void> {
       );
       INSERT INTO team_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
       ALTER TABLE team_state ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT true;
+      ALTER TABLE team_state ADD COLUMN IF NOT EXISTS reminder_sent_gw INTEGER;
+      ALTER TABLE team_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
 
       CREATE TABLE IF NOT EXISTS team_picks (
         id SERIAL PRIMARY KEY,
@@ -180,6 +184,8 @@ export function ensureSchema(): Promise<void> {
         CONSTRAINT single_row_scot_game_state CHECK (id = 1)
       );
       INSERT INTO scot_game_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+      ALTER TABLE scot_game_state ADD COLUMN IF NOT EXISTS reminder_sent_gw INTEGER;
+      ALTER TABLE scot_game_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
 
       CREATE TABLE IF NOT EXISTS scot_picks (
         id SERIAL PRIMARY KEY,
@@ -206,6 +212,8 @@ export function ensureSchema(): Promise<void> {
         CONSTRAINT single_row_scot_team_state CHECK (id = 1)
       );
       INSERT INTO scot_team_state (id) VALUES (1) ON CONFLICT (id) DO NOTHING;
+      ALTER TABLE scot_team_state ADD COLUMN IF NOT EXISTS reminder_sent_gw INTEGER;
+      ALTER TABLE scot_team_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
 
       CREATE TABLE IF NOT EXISTS scot_team_picks (
         id SERIAL PRIMARY KEY,
