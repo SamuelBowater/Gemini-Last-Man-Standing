@@ -87,33 +87,57 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-/** Goal-scorer names for one finished match. Swallows failures — a match whose timeline
- * can't be fetched (rate limit, no data) just falls back to manual entry. */
-export async function fetchMatchGoalScorers(externalId: string): Promise<string[]> {
+/** Goal-scorer names for one finished match. `ok: false` means the call itself failed
+ * (rate limit, network) — distinct from a successful call that just found no goals, e.g.
+ * because TheSportsDB hasn't logged that event yet for this match. */
+async function fetchMatchGoalScorers(externalId: string): Promise<{ ok: boolean; scorers: string[] }> {
   try {
     const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/lookuptimeline.php?id=${externalId}`;
     const resp = await fetch(url);
-    if (!resp.ok) return [];
+    if (!resp.ok) return { ok: false, scorers: [] };
     const data: { timeline?: TSDBTimelineEntry[] } = await resp.json();
-    if (!data.timeline) return [];
-    return data.timeline
+    if (!data.timeline) return { ok: true, scorers: [] };
+    const scorers = data.timeline
       .filter((t) => t.strTimeline === "Goal" && !/own goal/i.test(t.strTimelineDetail || ""))
       .map((t) => t.strPlayer)
       .filter((name): name is string => Boolean(name));
+    return { ok: true, scorers };
   } catch {
-    return [];
+    return { ok: false, scorers: [] };
   }
 }
 
+export interface GoalScorerLookup {
+  externalId: string;
+  label: string;
+}
+
+export interface GameweekGoalScorersResult {
+  scorers: string[];
+  failedMatches: string[];
+}
+
 /** Scorer names across every finished fixture for a gameweek, fetched sequentially with a
- * short delay between calls to stay within TheSportsDB's free-tier rate limit. */
-export async function fetchGameweekGoalScorers(externalIds: string[]): Promise<string[]> {
+ * 2s gap between calls to stay well within TheSportsDB's free-tier rate limit — retries once
+ * (after a longer pause) on failure before giving up on a match, and reports which matches
+ * (if any) it couldn't get data for so the admin knows to check them by hand. */
+export async function fetchGameweekGoalScorers(matches: GoalScorerLookup[]): Promise<GameweekGoalScorersResult> {
   const names: string[] = [];
-  for (const id of externalIds) {
-    names.push(...(await fetchMatchGoalScorers(id)));
-    await wait(300);
+  const failedMatches: string[] = [];
+  for (const match of matches) {
+    let result = await fetchMatchGoalScorers(match.externalId);
+    if (!result.ok) {
+      await wait(3000);
+      result = await fetchMatchGoalScorers(match.externalId);
+    }
+    if (result.ok) {
+      names.push(...result.scorers);
+    } else {
+      failedMatches.push(match.label);
+    }
+    await wait(2000);
   }
-  return Array.from(new Set(names)).sort();
+  return { scorers: Array.from(new Set(names)).sort(), failedMatches };
 }
 
 /** Fetches and upserts the whole Scottish Premiership season's fixtures/scores.

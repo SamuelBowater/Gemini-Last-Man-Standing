@@ -476,6 +476,7 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
   const [msg, setMsg] = useState("");
   const [suggestLoading, setSuggestLoading] = useState(false);
   const [suggestMsg, setSuggestMsg] = useState("");
+  const [suggestWarning, setSuggestWarning] = useState("");
 
   const scorersRef = useRef<string[]>([]);
   useEffect(() => {
@@ -499,9 +500,11 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
   const fetchSuggestions = useCallback(async () => {
     setSuggestLoading(true);
     setSuggestMsg("Syncing fixtures from TheSportsDB…");
+    setSuggestWarning("");
     setSuggested([]);
     try {
       await api("/api/admin/scot-sync-fixtures", { method: "POST" });
+      setSuggestMsg("Checking scorers (this can take a while — one request per finished match)…");
       const res = await api("/api/admin/scot-suggested-scorers");
       if (!res.ok) {
         setSuggestMsg(res.message || "Couldn't derive scorers from synced fixtures.");
@@ -518,6 +521,11 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
             `Synced data found ${newOnes.length} scorer${newOnes.length === 1 ? "" : "s"} you haven't added yet — add them?`
           );
         }
+      }
+      if (res.failedMatches?.length > 0) {
+        setSuggestWarning(
+          `⚠️ Couldn't check scorer data for: ${res.failedMatches.join(", ")} — add scorers for these manually if needed.`
+        );
       }
     } catch (e) {
       setSuggestMsg((e as Error).message);
@@ -614,6 +622,7 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
         </button>
         {suggested.length === 0 && suggestMsg && <div className="text-[11.5px] text-text-dim">{suggestMsg}</div>}
       </div>
+      {suggestWarning && <div className="text-[11.5px] text-[#b45309] mt-1.5">{suggestWarning}</div>}
       {suggested.length > 0 && (
         <div className="mt-2.5 bg-accent/10 border border-accent/30 rounded-lg px-3.5 py-3 flex items-center justify-between gap-3 flex-wrap">
           <div className="text-[12.5px] text-text">

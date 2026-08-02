@@ -12,15 +12,17 @@ export const GET = withErrors(async () => {
   const gs = gsRows[0];
 
   const { rows: fixtureRows } = await pool.query(
-    `SELECT external_id FROM fixtures
+    `SELECT external_id, home, away FROM fixtures
      WHERE season = $1 AND gw = $2 AND status = 'FINISHED' AND external_id IS NOT NULL`,
     [gs.season, gs.current_gw]
   );
 
   if (fixtureRows.length === 0) {
-    return NextResponse.json({ ok: true, gw: gs.current_gw, scorers: [] });
+    return NextResponse.json({ ok: true, gw: gs.current_gw, scorers: [], failedMatches: [] });
   }
 
-  const scorers = await fetchGameweekGoalScorers(fixtureRows.map((f) => f.external_id));
-  return NextResponse.json({ ok: true, gw: gs.current_gw, scorers });
+  const { scorers, failedMatches } = await fetchGameweekGoalScorers(
+    fixtureRows.map((f) => ({ externalId: f.external_id, label: `${f.home} v ${f.away}` }))
+  );
+  return NextResponse.json({ ok: true, gw: gs.current_gw, scorers, failedMatches });
 });
