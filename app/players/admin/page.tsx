@@ -230,7 +230,7 @@ function FixturesSourcePanel({
     setBusy(true);
     setMsg("Syncing…");
     try {
-      const res = await api("/api/cron/sync-fixtures");
+      const res = await api("/api/cron/sync-fixtures?full=1");
       if (!res.ok || res.fixturesSynced === 0) {
         setMsg(`${res.message}\n\n${JSON.stringify(res.diagnostics, null, 2)}`);
       } else {

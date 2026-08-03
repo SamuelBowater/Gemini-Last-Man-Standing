@@ -45,12 +45,22 @@ export const GET = withErrors(async (req: NextRequest) => {
   const { rows: gsRows } = await pool.query("SELECT season FROM game_state WHERE id = 1");
   const gs = gsRows[0];
 
-  // No season param — football-data.org's free plan only serves whatever
-  // season it currently considers "current" for the competition, which is
-  // exactly what we want (this call returns the WHOLE season in one go,
-  // every match already tagged with its own matchday number).
-  const url = `https://api.football-data.org/v4/competitions/${FD_COMPETITION_CODE}/matches`;
-  const resp = await fetch(url, { headers: { "X-Auth-Token": apiKey } });
+  // A whole-season request (~380 matches) takes 30+ seconds on football-data.org's
+  // side — fine for the odd manual click, but too slow for a scheduler with a hard
+  // 30s timeout. The frequent automated sync only really needs recent/near-term
+  // matches for live scores anyway, so it requests a narrow date window instead;
+  // pass ?full=1 (used by the admin's manual "Sync fixtures now" button) to get
+  // the complete season, e.g. when fixtures for a distant gameweek need a check.
+  const full = req.nextUrl.searchParams.get("full") === "1";
+  const url = new URL(`https://api.football-data.org/v4/competitions/${FD_COMPETITION_CODE}/matches`);
+  if (!full) {
+    const now = Date.now();
+    const dateFrom = new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const dateTo = new Date(now + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    url.searchParams.set("dateFrom", dateFrom);
+    url.searchParams.set("dateTo", dateTo);
+  }
+  const resp = await fetch(url.toString(), { headers: { "X-Auth-Token": apiKey } });
   const rawText = await resp.text();
 
   let data: { matches?: FDMatch[]; message?: string; errorCode?: number } | null = null;
@@ -61,7 +71,7 @@ export const GET = withErrors(async (req: NextRequest) => {
   }
 
   const diagnostics = {
-    requestedUrl: url,
+    requestedUrl: url.toString(),
     httpStatus: resp.status,
     apiMessage: data?.message ?? null,
     matchesReturned: data?.matches?.length ?? null,
