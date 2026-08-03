@@ -26,18 +26,29 @@ export const GET = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ ok: false, playersSynced: 0, message }, { status: 200 });
   }
 
+  // One batched multi-row upsert instead of one round-trip per player — the
+  // sequential version was taking 40+ seconds for the full ~500-player list,
+  // long enough to trip an external scheduler's request timeout.
+  const values: unknown[] = [];
+  const valueRows: string[] = [];
   for (const p of players) {
+    const base = values.length;
+    valueRows.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, now())`);
+    values.push(p.fplId, p.name, p.team, p.position, p.status, p.news, p.chanceOfPlaying, p.threat);
+  }
+
+  if (valueRows.length > 0) {
     await pool.query(
       `INSERT INTO players (fpl_id, name, team, position, status, news, chance_of_playing, threat, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now())
+       VALUES ${valueRows.join(", ")}
        ON CONFLICT (fpl_id)
        DO UPDATE SET name = EXCLUDED.name, team = EXCLUDED.team, position = EXCLUDED.position,
          status = EXCLUDED.status, news = EXCLUDED.news, chance_of_playing = EXCLUDED.chance_of_playing,
          threat = EXCLUDED.threat, updated_at = now()`,
-      [p.fplId, p.name, p.team, p.position, p.status, p.news, p.chanceOfPlaying, p.threat]
+      values
     );
   }
 
   await pool.query("UPDATE player_sync_meta SET last_synced_at = now(), last_error = NULL WHERE id = 1");
-  return NextResponse.json({ ok: true, playersSynced: players.length });
+  return NextResponse.json({ ok: true, playersSynced: valueRows.length });
 });
