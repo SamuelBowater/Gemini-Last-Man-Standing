@@ -56,7 +56,7 @@ export const GET = withErrors(async (req: NextRequest) => {
   if (!full) {
     const now = Date.now();
     const dateFrom = new Date(now - 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-    const dateTo = new Date(now + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const dateTo = new Date(now + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     url.searchParams.set("dateFrom", dateFrom);
     url.searchParams.set("dateTo", dateTo);
   }
