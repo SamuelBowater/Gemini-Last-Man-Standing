@@ -428,39 +428,43 @@ export default function Landing() {
             <ChangePinPanel onClose={() => setPinModalOpen(false)} />
           </Modal>
 
-          <div className="mb-3 font-mono text-[12px] tracking-[2px] uppercase text-accent">
-            🏴 Scottish Premiership — Trial Weekend
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
-            <GameCard
-              icon="⚽"
-              eyebrow="Trial · Player Picks"
-              title="Forward, Mid & Def"
-              description="Pick a forward, a midfielder and a defender every gameweek — one of them has to find the net or you're out."
-              rules={[
-                "One player per position, every gameweek",
-                "Each player can only be used once all trial",
-                "Survive as long as one of your three scores",
-              ]}
-              href="/scottish/players"
-              cta="Play Player Picks"
-              disabledLabel={state.me.canPlayScotPlayers === false ? "Not in this pool" : undefined}
-            />
-            <GameCard
-              icon="🛡️"
-              eyebrow="Trial · Team Survival"
-              title="Pick a Team"
-              description="Pick one Scottish Premiership team each gameweek — if they win, you go through. If they lose, you're out."
-              rules={[
-                "One team per gameweek, win and you survive",
-                "Each team can only be picked once all trial",
-                "A draw or a loss knocks you out",
-              ]}
-              href="/scottish/teams"
-              cta="Play Team Survival"
-              disabledLabel={state.me.canPlayScotTeams === false ? "Not in this pool" : undefined}
-            />
-          </div>
+          {!state.gameState.scottishHidden && (
+            <>
+              <div className="mb-3 font-mono text-[12px] tracking-[2px] uppercase text-accent">
+                🏴 Scottish Premiership — Trial Weekend
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-8">
+                <GameCard
+                  icon="⚽"
+                  eyebrow="Trial · Player Picks"
+                  title="Forward, Mid & Def"
+                  description="Pick a forward, a midfielder and a defender every gameweek — one of them has to find the net or you're out."
+                  rules={[
+                    "One player per position, every gameweek",
+                    "Each player can only be used once all trial",
+                    "Survive as long as one of your three scores",
+                  ]}
+                  href="/scottish/players"
+                  cta="Play Player Picks"
+                  disabledLabel={state.me.canPlayScotPlayers === false ? "Not in this pool" : undefined}
+                />
+                <GameCard
+                  icon="🛡️"
+                  eyebrow="Trial · Team Survival"
+                  title="Pick a Team"
+                  description="Pick one Scottish Premiership team each gameweek — if they win, you go through. If they lose, you're out."
+                  rules={[
+                    "One team per gameweek, win and you survive",
+                    "Each team can only be picked once all trial",
+                    "A draw or a loss knocks you out",
+                  ]}
+                  href="/scottish/teams"
+                  cta="Play Team Survival"
+                  disabledLabel={state.me.canPlayScotTeams === false ? "Not in this pool" : undefined}
+                />
+              </div>
+            </>
+          )}
 
           <div className="mb-3 font-mono text-[12px] tracking-[2px] uppercase text-accent">
             ⚽ Premier League — Main Season

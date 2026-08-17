@@ -8,7 +8,7 @@ export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, locked FROM game_state WHERE id = 1"
+    "SELECT current_gw, phase, season, locked, scottish_hidden FROM game_state WHERE id = 1"
   );
   const gs = gsRows[0];
 
@@ -95,6 +95,7 @@ export const GET = withErrors(async () => {
       season: gs.season,
       pickDeadline,
       locked: gs.locked,
+      scottishHidden: gs.scottish_hidden,
     },
     participants: participants.map((p) => ({ ...p, submitted: submittedSet.has(p.id) })),
     fixtures,
