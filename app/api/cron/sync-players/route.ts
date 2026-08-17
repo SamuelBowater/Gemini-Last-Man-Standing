@@ -49,6 +49,18 @@ export const GET = withErrors(async (req: NextRequest) => {
     );
   }
 
+  // FPL drops players entirely from the feed once their club is relegated (rather than
+  // reassigning them), so without this, players from last season's relegated clubs would
+  // sit in our table forever — still selectable, under a team that's no longer in the league.
+  // Guarded on a non-empty fetch so a fluke empty response can't wipe the whole table.
+  let removed = 0;
+  if (players.length > 0) {
+    const res = await pool.query("DELETE FROM players WHERE fpl_id != ALL($1::int[])", [
+      players.map((p) => p.fplId),
+    ]);
+    removed = res.rowCount ?? 0;
+  }
+
   await pool.query("UPDATE player_sync_meta SET last_synced_at = now(), last_error = NULL WHERE id = 1");
-  return NextResponse.json({ ok: true, playersSynced: valueRows.length });
+  return NextResponse.json({ ok: true, playersSynced: valueRows.length, playersRemoved: removed });
 });
