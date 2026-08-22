@@ -10,6 +10,12 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function phaseLabel(gameState: { phase: string; pickDeadline: string | null }): string {
+  if (gameState.phase === "finished") return "finished";
+  const locked = gameState.pickDeadline ? Date.now() >= new Date(gameState.pickDeadline).getTime() : false;
+  return locked ? "gameweek live" : "picking";
+}
+
 async function api(path: string, opts?: RequestInit) {
   const res = await fetch(path, {
     ...opts,
@@ -120,7 +126,7 @@ function AdminLogin({ onSuccess }: { onSuccess: () => void }) {
 function AdminDashboard() {
   const [fixtures, setFixtures] = useState<AdminFixture[]>([]);
   const [selectedGW, setSelectedGW] = useState(1);
-  const [gameState, setGameState] = useState<{ currentGW: number; phase: string; season: string } | null>(null);
+  const [gameState, setGameState] = useState<{ currentGW: number; phase: string; season: string; pickDeadline: string | null } | null>(null);
 
   const refresh = useCallback(async () => {
     const [pubState, fixturesRes] = await Promise.all([
@@ -178,7 +184,7 @@ function AdminDashboard() {
             Gameweek: <span className="text-accent">{gameState.currentGW}</span>
           </div>
           <div>
-            Phase: <span className="text-accent">{gameState.phase}</span>
+            Phase: <span className="text-accent">{phaseLabel(gameState)}</span>
           </div>
         </div>
       </Panel>

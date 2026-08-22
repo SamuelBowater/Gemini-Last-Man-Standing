@@ -113,3 +113,18 @@ export async function fetchGameweekScorers(gw: number): Promise<Map<number, numb
   }
   return scorers;
 }
+
+/** fplId -> {goals, minutes} that gameweek, for every player who's featured at all —
+ * lets callers tell "hasn't kicked off yet" apart from "played and didn't score". */
+export async function fetchGameweekLiveStats(gw: number): Promise<Map<number, { goals: number; minutes: number }>> {
+  const resp = await fetch(`https://fantasy.premierleague.com/api/event/${gw}/live/`, {
+    headers: { "User-Agent": "Mozilla/5.0" },
+  });
+  if (!resp.ok) return new Map();
+  const data: { elements: { id: number; stats: { goals_scored: number; minutes: number } }[] } = await resp.json();
+  const stats = new Map<number, { goals: number; minutes: number }>();
+  for (const el of data.elements) {
+    stats.set(el.id, { goals: el.stats.goals_scored, minutes: el.stats.minutes });
+  }
+  return stats;
+}

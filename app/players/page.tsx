@@ -590,14 +590,18 @@ function LockedPicksPanel({
   currentGW: number;
   pick: { forward: string; midfielder: string; defender: string };
 }) {
-  const [liveScorers, setLiveScorers] = useState<Set<string> | null>(null);
+  const [liveStatus, setLiveStatus] = useState<Record<string, "scored" | "no_goal"> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     api("/api/live-scorers")
       .then((res) => {
         if (!cancelled && res.ok) {
-          setLiveScorers(new Set((res.scorers as string[]).map((s) => s.toLowerCase())));
+          const lowered: Record<string, "scored" | "no_goal"> = {};
+          for (const [name, status] of Object.entries(res.players as Record<string, "scored" | "no_goal">)) {
+            lowered[name.toLowerCase()] = status;
+          }
+          setLiveStatus(lowered);
         }
       })
       .catch(() => {});
@@ -610,13 +614,13 @@ function LockedPicksPanel({
     <Panel>
       <PanelTitle>Picks locked — GW{currentGW}</PanelTitle>
       <div className="flex gap-2 flex-wrap">
-        <LockedPickChip label="FWD" name={pick.forward} liveScorers={liveScorers} />
-        <LockedPickChip label="MID" name={pick.midfielder} liveScorers={liveScorers} />
-        <LockedPickChip label="DEF" name={pick.defender} liveScorers={liveScorers} />
+        <LockedPickChip label="FWD" name={pick.forward} liveStatus={liveStatus} />
+        <LockedPickChip label="MID" name={pick.midfielder} liveStatus={liveStatus} />
+        <LockedPickChip label="DEF" name={pick.defender} liveStatus={liveStatus} />
       </div>
       <Sub>
         <span className="block mt-3.5">
-          {liveScorers
+          {liveStatus
             ? "Live goal data — colours may lag or change until the admin logs the official result."
             : "Waiting on the admin to log this gameweek's results."}
         </span>
@@ -628,25 +632,25 @@ function LockedPicksPanel({
 function LockedPickChip({
   label,
   name,
-  liveScorers,
+  liveStatus,
 }: {
   label: string;
   name: string;
-  liveScorers: Set<string> | null;
+  liveStatus: Record<string, "scored" | "no_goal"> | null;
 }) {
-  const scored = liveScorers ? liveScorers.has(name.toLowerCase()) : null;
+  const status = liveStatus ? liveStatus[name.toLowerCase()] : undefined;
   return (
     <span
       className={`text-[12.5px] px-2.5 py-1.5 rounded-md border ${
-        scored
+        status === "scored"
           ? "bg-green-alive/10 border-green-alive/30 text-green-alive"
-          : scored === false
+          : status === "no_goal"
             ? "bg-red/10 border-red/30 text-red"
             : "bg-bg-deep border-line text-text-dim"
       }`}
     >
       {label} · {name}
-      {scored ? " ⚽" : ""}
+      {status === "scored" ? " ⚽" : ""}
     </span>
   );
 }
