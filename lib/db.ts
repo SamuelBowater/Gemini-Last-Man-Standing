@@ -70,6 +70,7 @@ export function ensureSchema(): Promise<void> {
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS locked BOOLEAN NOT NULL DEFAULT true;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS reminder_sent_gw INTEGER;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
+      ALTER TABLE game_state ADD COLUMN IF NOT EXISTS scottish_hidden BOOLEAN NOT NULL DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS participants (
         id SERIAL PRIMARY KEY,

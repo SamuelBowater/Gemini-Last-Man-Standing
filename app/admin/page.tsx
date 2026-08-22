@@ -96,6 +96,7 @@ function AdminDashboard() {
   const [players, setPlayers] = useState<AdminParticipant[]>([]);
   const [signupCode, setSignupCode] = useState<string | null>(null);
   const [locked, setLocked] = useState(true);
+  const [scottishHidden, setScottishHidden] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -106,6 +107,7 @@ function AdminDashboard() {
     setPlayers(playersRes.participants);
     setSignupCode(settingsRes.signupCode);
     setLocked(settingsRes.locked);
+    setScottishHidden(settingsRes.scottishHidden);
   }, []);
 
   useEffect(() => {
@@ -153,7 +155,7 @@ function AdminDashboard() {
 
       <SignupCodePanel signupCode={signupCode} onChange={refresh} />
       <PlayersPanel players={players} onChange={refresh} />
-      <GamesPanel locked={locked} onChange={refresh} />
+      <GamesPanel locked={locked} scottishHidden={scottishHidden} onChange={refresh} />
       <NotificationsPanel />
       <DangerZone onChange={refresh} />
 
@@ -327,8 +329,17 @@ function PlayersPanel({ players, onChange }: { players: AdminParticipant[]; onCh
   );
 }
 
-function GamesPanel({ locked, onChange }: { locked: boolean; onChange: () => void }) {
+function GamesPanel({
+  locked,
+  scottishHidden,
+  onChange,
+}: {
+  locked: boolean;
+  scottishHidden: boolean;
+  onChange: () => void;
+}) {
   const [busy, setBusy] = useState(false);
+  const [scottishBusy, setScottishBusy] = useState(false);
 
   async function toggleLocked() {
     setBusy(true);
@@ -339,6 +350,17 @@ function GamesPanel({ locked, onChange }: { locked: boolean; onChange: () => voi
       // ignore — onChange() will re-fetch and the switch will reflect reality either way
     }
     setBusy(false);
+  }
+
+  async function toggleScottishHidden() {
+    setScottishBusy(true);
+    try {
+      await api("/api/admin/settings", { method: "POST", body: JSON.stringify({ scottishHidden: !scottishHidden }) });
+      onChange();
+    } catch {
+      // ignore — onChange() will re-fetch and the switch will reflect reality either way
+    }
+    setScottishBusy(false);
   }
 
   return (
@@ -367,6 +389,32 @@ function GamesPanel({ locked, onChange }: { locked: boolean; onChange: () => voi
           <span
             className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
               locked ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 mb-2">
+        <div>
+          <div className="font-semibold">🏴 Hide Scottish trial</div>
+          <div className="text-[11.5px] text-text-dim mt-0.5">
+            Removes the Scottish Premiership trial section from the home page entirely. Its data
+            and admin pages stay intact — this only hides it from players.
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={scottishHidden}
+          onClick={toggleScottishHidden}
+          disabled={scottishBusy}
+          className={`shrink-0 ml-3 w-12 h-7 rounded-full relative transition disabled:opacity-50 ${
+            scottishHidden ? "bg-accent" : "bg-line-strong"
+          }`}
+        >
+          <span
+            className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+              scottishHidden ? "translate-x-6" : "translate-x-1"
             }`}
           />
         </button>

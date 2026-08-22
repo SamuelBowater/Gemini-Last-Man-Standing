@@ -319,7 +319,11 @@ function PlayerDataPanel() {
     setMsg("Syncing…");
     try {
       const res = await api("/api/cron/sync-players");
-      setMsg(res.ok ? `Synced ${res.playersSynced} players.` : res.message);
+      setMsg(
+        res.ok
+          ? `Synced ${res.playersSynced} players.${res.playersRemoved ? ` Removed ${res.playersRemoved} no longer in the FPL feed (e.g. relegated clubs).` : ""}`
+          : res.message
+      );
       await loadStatus();
     } catch (e) {
       setMsg((e as Error).message);

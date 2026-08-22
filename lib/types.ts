@@ -19,6 +19,7 @@ export interface GameState {
   season: string;
   pickDeadline: string | null;
   locked: boolean;
+  scottishHidden: boolean;
 }
 
 export interface Participant {
