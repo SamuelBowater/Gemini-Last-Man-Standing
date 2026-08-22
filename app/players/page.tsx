@@ -568,25 +568,7 @@ function PickZone({
 
   if (locked) {
     if (me.pick) {
-      return (
-        <Panel>
-          <PanelTitle>Picks locked — GW{gameState.currentGW}</PanelTitle>
-          <div className="flex gap-2 flex-wrap">
-            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-              FWD · {me.pick.forward}
-            </span>
-            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-              MID · {me.pick.midfielder}
-            </span>
-            <span className="text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-              DEF · {me.pick.defender}
-            </span>
-          </div>
-          <Sub>
-            <span className="block mt-3.5">Waiting on the admin to log this gameweek&apos;s results.</span>
-          </Sub>
-        </Panel>
-      );
+      return <LockedPicksPanel currentGW={gameState.currentGW} pick={me.pick} />;
     }
     return (
       <Panel>
@@ -599,6 +581,74 @@ function PickZone({
   }
 
   return <PickForm me={me} gameState={gameState} players={players} onDone={onDone} />;
+}
+
+function LockedPicksPanel({
+  currentGW,
+  pick,
+}: {
+  currentGW: number;
+  pick: { forward: string; midfielder: string; defender: string };
+}) {
+  const [liveScorers, setLiveScorers] = useState<Set<string> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/live-scorers")
+      .then((res) => {
+        if (!cancelled && res.ok) {
+          setLiveScorers(new Set((res.scorers as string[]).map((s) => s.toLowerCase())));
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <Panel>
+      <PanelTitle>Picks locked — GW{currentGW}</PanelTitle>
+      <div className="flex gap-2 flex-wrap">
+        <LockedPickChip label="FWD" name={pick.forward} liveScorers={liveScorers} />
+        <LockedPickChip label="MID" name={pick.midfielder} liveScorers={liveScorers} />
+        <LockedPickChip label="DEF" name={pick.defender} liveScorers={liveScorers} />
+      </div>
+      <Sub>
+        <span className="block mt-3.5">
+          {liveScorers
+            ? "Live goal data — colours may lag or change until the admin logs the official result."
+            : "Waiting on the admin to log this gameweek's results."}
+        </span>
+      </Sub>
+    </Panel>
+  );
+}
+
+function LockedPickChip({
+  label,
+  name,
+  liveScorers,
+}: {
+  label: string;
+  name: string;
+  liveScorers: Set<string> | null;
+}) {
+  const scored = liveScorers ? liveScorers.has(name.toLowerCase()) : null;
+  return (
+    <span
+      className={`text-[12.5px] px-2.5 py-1.5 rounded-md border ${
+        scored
+          ? "bg-green-alive/10 border-green-alive/30 text-green-alive"
+          : scored === false
+            ? "bg-red/10 border-red/30 text-red"
+            : "bg-bg-deep border-line text-text-dim"
+      }`}
+    >
+      {label} · {name}
+      {scored ? " ⚽" : ""}
+    </span>
+  );
 }
 
 function PickHistoryPanel({ history }: { history: PickHistoryEntry[] }) {

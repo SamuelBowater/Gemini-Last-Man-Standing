@@ -224,7 +224,7 @@ function PickCell({
   }
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap">
-      <div>
+      <div className={scored ? "text-green-alive font-semibold" : undefined}>
         {name}
         {scored ? " ⚽" : ""}
       </div>
@@ -246,7 +246,7 @@ function TopPickColumn({ title, picks }: { title: string; picks: TopPick[] }) {
               key={p.name}
               className="flex justify-between items-center gap-2 bg-bg-deep border border-line rounded-lg px-3 py-2"
             >
-              <span className="text-[13px]">
+              <span className={`text-[13px] ${p.scored ? "text-green-alive font-semibold" : ""}`}>
                 <span className="text-accent font-semibold">#{i + 1}</span> {p.name}
                 {p.scored ? " ⚽" : ""}
               </span>
