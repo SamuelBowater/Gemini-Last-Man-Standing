@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, type ReactNode } from "react";
 import Link from "next/link";
-import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, TextInput, PasswordInput, EmptyNote, LoadingScreen } from "@/components/ui";
+import { Panel, PanelTitle, Sub, PrimaryButton, GhostButton, DangerButton, TextInput, PasswordInput, EmptyNote, LoadingScreen } from "@/components/ui";
 import { TeamBadge } from "@/components/team-badge";
 import { SCOTTISH_TEAMS } from "@/lib/data";
 
@@ -389,11 +389,33 @@ function TeamResultsPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.currentGW]);
 
+  async function undo() {
+    if (!confirm("Undo the last applied results? This restores everyone eliminated that gameweek and lets you re-apply once you're sure.")) {
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      const res = await api("/api/admin/undo-results", { method: "POST", body: JSON.stringify({ game: "scot-teams" }) });
+      setMsg(`Undone — back on GW${res.restoredGW}.`);
+      onChange();
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy(false);
+  }
+
   if (gameState.phase === "finished") {
     return (
       <Panel>
         <PanelTitle>Results</PanelTitle>
         <Sub>This trial has finished. Reset it from the main /admin page to start again.</Sub>
+        <div className="mt-3">
+          <DangerButton onClick={undo} disabled={busy}>
+            {busy ? "Undoing…" : "🤦 Jason fucked up — undo last results"}
+          </DangerButton>
+        </div>
+        {msg && <div className="text-[13px] text-text-dim mt-2.5">{msg}</div>}
       </Panel>
     );
   }
@@ -482,10 +504,15 @@ function TeamResultsPanel({
           })}
         </div>
       )}
-      <div className="mt-3">
+      <div className="mt-3 flex items-center gap-3 flex-wrap">
         <PrimaryButton onClick={apply} disabled={busy}>
           {busy ? "Applying…" : `Apply results & advance`}
         </PrimaryButton>
+        {gameState.currentGW > 1 && (
+          <DangerButton onClick={undo} disabled={busy}>
+            🤦 Jason fucked up — undo last results
+          </DangerButton>
+        )}
       </div>
       {msg && <div className="text-[13px] text-text-dim mt-2.5">{msg}</div>}
     </Panel>
