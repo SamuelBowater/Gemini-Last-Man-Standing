@@ -590,15 +590,17 @@ function LockedPicksPanel({
   currentGW: number;
   pick: { forward: string; midfielder: string; defender: string };
 }) {
-  const [liveStatus, setLiveStatus] = useState<Record<string, "scored" | "no_goal"> | null>(null);
+  const [liveStatus, setLiveStatus] = useState<Record<string, "scored" | "no_goal" | "in_progress"> | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     api("/api/live-scorers")
       .then((res) => {
         if (!cancelled && res.ok) {
-          const lowered: Record<string, "scored" | "no_goal"> = {};
-          for (const [name, status] of Object.entries(res.players as Record<string, "scored" | "no_goal">)) {
+          const lowered: Record<string, "scored" | "no_goal" | "in_progress"> = {};
+          for (const [name, status] of Object.entries(
+            res.players as Record<string, "scored" | "no_goal" | "in_progress">
+          )) {
             lowered[name.toLowerCase()] = status;
           }
           setLiveStatus(lowered);
@@ -636,12 +638,20 @@ function LockedPickChip({
 }: {
   label: string;
   name: string;
-  liveStatus: Record<string, "scored" | "no_goal"> | null;
+  liveStatus: Record<string, "scored" | "no_goal" | "in_progress"> | null;
 }) {
   const status = liveStatus ? liveStatus[name.toLowerCase()] : undefined;
+  const note =
+    status === "no_goal"
+      ? null
+      : status === "in_progress"
+        ? "In progress"
+        : !status && liveStatus
+          ? "Not started yet"
+          : null;
   return (
     <span
-      className={`text-[12.5px] px-2.5 py-1.5 rounded-md border ${
+      className={`inline-flex flex-col text-[12.5px] px-2.5 py-1.5 rounded-md border ${
         status === "scored"
           ? "bg-green-alive/10 border-green-alive/30 text-green-alive"
           : status === "no_goal"
@@ -649,8 +659,11 @@ function LockedPickChip({
             : "bg-bg-deep border-line text-text-dim"
       }`}
     >
-      {label} · {name}
-      {status === "scored" ? " ⚽" : ""}
+      <span>
+        {label} · {name}
+        {status === "scored" ? " ⚽" : status === "no_goal" ? " ❌" : ""}
+      </span>
+      {note && <span className="text-[10px] opacity-80">{note}</span>}
     </span>
   );
 }

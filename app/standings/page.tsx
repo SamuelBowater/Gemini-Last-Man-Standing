@@ -43,7 +43,7 @@ export default function StandingsPage() {
   const [gw, setGw] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"selections" | "topPicks">("selections");
-  const [liveStatus, setLiveStatus] = useState<Record<string, "scored" | "no_goal"> | null>(null);
+  const [liveStatus, setLiveStatus] = useState<Record<string, "scored" | "no_goal" | "in_progress"> | null>(null);
 
   const load = useCallback((targetGw?: number) => {
     return api(`/api/gameweek${targetGw ? `?gw=${targetGw}` : ""}`).then((data: GameweekReport) => {
@@ -69,8 +69,10 @@ export default function StandingsPage() {
     api("/api/live-scorers")
       .then((res) => {
         if (!cancelled && res.ok) {
-          const lowered: Record<string, "scored" | "no_goal"> = {};
-          for (const [name, status] of Object.entries(res.players as Record<string, "scored" | "no_goal">)) {
+          const lowered: Record<string, "scored" | "no_goal" | "in_progress"> = {};
+          for (const [name, status] of Object.entries(
+            res.players as Record<string, "scored" | "no_goal" | "in_progress">
+          )) {
             lowered[name.toLowerCase()] = status;
           }
           setLiveStatus(lowered);
@@ -243,7 +245,7 @@ function PickCell({
   team: string | null;
   scored: boolean | null;
   submitted: boolean;
-  liveStatus: Record<string, "scored" | "no_goal"> | null;
+  liveStatus: Record<string, "scored" | "no_goal" | "in_progress"> | null;
 }) {
   if (!revealed) {
     return (
@@ -256,10 +258,18 @@ function PickCell({
 
   // Official scored status (from applied results) always wins once it exists.
   // Before that, fall back to the live feed so scorers still show up green —
-  // "no live entry yet" means their match hasn't kicked off.
+  // "no live entry yet" means their match hasn't kicked off, and "no goal" only
+  // shows red once their match has actually finished.
   const live = scored === null && liveStatus ? liveStatus[name.toLowerCase()] : undefined;
   const isScored = scored === true || live === "scored";
-  const notStartedYet = scored === null && liveStatus && !live;
+  const note =
+    scored === null && liveStatus
+      ? live === "in_progress"
+        ? "Match in progress"
+        : !live
+          ? "Not started yet"
+          : null
+      : null;
 
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap">
@@ -273,10 +283,10 @@ function PickCell({
         }
       >
         {name}
-        {isScored ? " ⚽" : ""}
+        {isScored ? " ⚽" : live === "no_goal" ? " ❌" : ""}
       </div>
       {team && <div className="text-[10.5px] text-text-dim font-normal">{team}</div>}
-      {notStartedYet && <div className="text-[10px] text-text-dim">Not started yet</div>}
+      {note && <div className="text-[10px] text-text-dim">{note}</div>}
     </td>
   );
 }
