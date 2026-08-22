@@ -4,6 +4,17 @@ import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
 import type { TeamGameweekReport, TeamGameweekRow, TeamTopPick } from "@/lib/team-types";
 import { deriveTeamResult, findTeamFixture, type FixtureLike } from "@/lib/teams";
+import type { MatchStage } from "@/lib/team-types";
+
+const FINISHED_STATUSES = new Set(["FINISHED", "AWARDED"]);
+const NOT_STARTED_STATUSES = new Set(["SCHEDULED", "TIMED", "POSTPONED"]);
+
+function matchStageFor(fixture: FixtureLike | undefined): MatchStage {
+  if (!fixture) return "unplayed";
+  if (FINISHED_STATUSES.has(fixture.status || "")) return "finished";
+  if (!fixture.status || NOT_STARTED_STATUSES.has(fixture.status)) return "not_started";
+  return "in_progress";
+}
 
 async function topTeamPicks(gw: number, fixtures: FixtureLike[]): Promise<TeamTopPick[]> {
   const { rows } = await pool.query(
@@ -15,11 +26,15 @@ async function topTeamPicks(gw: number, fixtures: FixtureLike[]): Promise<TeamTo
      LIMIT 3`,
     [gw]
   );
-  return rows.map((r) => ({
-    team: r.team,
-    picks: r.picks,
-    result: deriveTeamResult(findTeamFixture(fixtures, r.team), r.team),
-  }));
+  return rows.map((r) => {
+    const fixture = findTeamFixture(fixtures, r.team);
+    return {
+      team: r.team,
+      picks: r.picks,
+      result: deriveTeamResult(fixture, r.team),
+      matchStage: matchStageFor(fixture),
+    };
+  });
 }
 
 export const GET = withErrors(async (req: NextRequest) => {
@@ -77,6 +92,7 @@ export const GET = withErrors(async (req: NextRequest) => {
       submitted: hasPick,
       team,
       result: picksVisible && hasPick ? deriveTeamResult(fixture, r.team) : null,
+      matchStage: picksVisible && hasPick ? matchStageFor(fixture) : null,
       eliminatedThisGW: r.eliminatedGW === gw,
     };
   });

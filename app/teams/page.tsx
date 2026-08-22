@@ -7,6 +7,17 @@ import { TeamBadge } from "@/components/team-badge";
 import { ChangePinPanel } from "@/components/change-pin-panel";
 import type { Fixture, Participant } from "@/lib/types";
 import type { TeamStateResponse, TeamMe, TeamGameState, TeamPickHistoryEntry } from "@/lib/team-types";
+import { deriveTeamResult, findTeamFixture, type FixtureLike } from "@/lib/teams";
+
+const FINISHED_STATUSES = new Set(["FINISHED", "AWARDED"]);
+const NOT_STARTED_STATUSES = new Set(["SCHEDULED", "TIMED", "POSTPONED"]);
+
+function matchStageFor(fixture: FixtureLike | undefined): "not_started" | "in_progress" | "finished" | "unplayed" {
+  if (!fixture) return "unplayed";
+  if (FINISHED_STATUSES.has(fixture.status || "")) return "finished";
+  if (!fixture.status || NOT_STARTED_STATUSES.has(fixture.status)) return "not_started";
+  return "in_progress";
+}
 
 async function api(path: string, opts?: RequestInit) {
   const res = await fetch(path, {
@@ -474,20 +485,7 @@ function PickZone({
 
   if (locked) {
     if (me.pick) {
-      return (
-        <Panel>
-          <PanelTitle>Pick locked — GW{gameState.currentGW}</PanelTitle>
-          <div className="flex gap-2 flex-wrap">
-            <span className="flex items-center gap-1.5 text-[12.5px] px-2.5 py-1.5 rounded-md bg-bg-deep border border-line text-text-dim">
-              <TeamBadge team={me.pick.team} size={18} />
-              {me.pick.team}
-            </span>
-          </div>
-          <Sub>
-            <span className="block mt-3.5">Waiting on the admin to log this gameweek&apos;s results.</span>
-          </Sub>
-        </Panel>
-      );
+      return <LockedPickPanel currentGW={gameState.currentGW} team={me.pick.team} />;
     }
     return (
       <Panel>
@@ -500,6 +498,58 @@ function PickZone({
   }
 
   return <TeamPickForm me={me} gameState={gameState} availableTeams={availableTeams} onDone={onDone} />;
+}
+
+function LockedPickPanel({ currentGW, team }: { currentGW: number; team: string }) {
+  const [fixture, setFixture] = useState<FixtureLike | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    api("/api/team-fixtures")
+      .then((res) => {
+        if (!cancelled) setFixture(findTeamFixture(res.fixtures as FixtureLike[], team) ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [team]);
+
+  const stage = fixture === undefined ? undefined : matchStageFor(fixture ?? undefined);
+  const result = fixture ? deriveTeamResult(fixture, team) : null;
+  const note =
+    stage === "not_started" ? "Not started yet" : stage === "in_progress" ? "Match in progress" : null;
+
+  return (
+    <Panel>
+      <PanelTitle>Pick locked — GW{currentGW}</PanelTitle>
+      <div className="flex gap-2 flex-wrap">
+        <span
+          className={`inline-flex flex-col text-[12.5px] px-2.5 py-1.5 rounded-md border ${
+            result === "win"
+              ? "bg-green-alive/10 border-green-alive/30 text-green-alive"
+              : result === "loss"
+                ? "bg-red/10 border-red/30 text-red"
+                : "bg-bg-deep border-line text-text-dim"
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <TeamBadge team={team} size={18} />
+            {team}
+            {result === "win" ? " ✓" : result === "loss" ? " ❌" : result === "draw" ? " (draw)" : ""}
+          </span>
+          {note && <span className="text-[10px] opacity-80">{note}</span>}
+        </span>
+      </div>
+      <Sub>
+        <span className="block mt-3.5">
+          {stage
+            ? "Live match data — colours may lag or change until the admin logs the official result."
+            : "Waiting on the admin to log this gameweek's results."}
+        </span>
+      </Sub>
+    </Panel>
+  );
 }
 
 function PickHistoryPanel({ history }: { history: TeamPickHistoryEntry[] }) {

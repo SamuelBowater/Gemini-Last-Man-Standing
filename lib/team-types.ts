@@ -34,6 +34,8 @@ export interface TeamStateResponse {
   me: TeamMe | null;
 }
 
+export type MatchStage = "not_started" | "in_progress" | "finished" | "unplayed";
+
 export interface TeamGameweekRow {
   id: number;
   name: string;
@@ -41,6 +43,7 @@ export interface TeamGameweekRow {
   submitted: boolean;
   team: string | null;
   result: TeamResult | null;
+  matchStage?: MatchStage | null;
   eliminatedThisGW: boolean;
 }
 
@@ -48,6 +51,7 @@ export interface TeamTopPick {
   team: string;
   picks: number;
   result: TeamResult;
+  matchStage?: MatchStage | null;
 }
 
 export interface TeamGameweekReport {

@@ -166,7 +166,7 @@ export default function TeamStandingsPage() {
                   {report.rows.map((r) => (
                     <tr key={r.id} className="border-b border-line">
                       <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">{r.name}</td>
-                      <PickCell revealed={report.picksVisible} team={r.team} result={r.result} submitted={r.submitted} />
+                      <PickCell revealed={report.picksVisible} team={r.team} result={r.result} matchStage={r.matchStage} submitted={r.submitted} />
                       <td className="py-2.5">
                         <Badge tone={r.overallStatus === "eliminated" ? "out" : "alive"}>
                           {r.overallStatus === "eliminated" ? "Eliminated" : "Active"}
@@ -197,11 +197,13 @@ function PickCell({
   revealed,
   team,
   result,
+  matchStage,
   submitted,
 }: {
   revealed: boolean;
   team: string | null;
   result: TeamGameweekReport["rows"][number]["result"];
+  matchStage: TeamGameweekReport["rows"][number]["matchStage"];
   submitted: boolean;
 }) {
   if (!revealed) {
@@ -212,14 +214,20 @@ function PickCell({
   if (!team) {
     return <td className="py-2.5 pr-3 whitespace-nowrap text-text-dim">-</td>;
   }
-  const suffix = result === "win" ? " ✓" : result === "draw" ? " (draw)" : result === "loss" ? " (lost)" : "";
+  const suffix = result === "win" ? " ✓" : result === "draw" ? " (draw)" : result === "loss" ? " ❌" : "";
+  const note = matchStage === "not_started" ? "Not started yet" : matchStage === "in_progress" ? "Match in progress" : null;
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap">
-      <span className={`inline-flex items-center gap-1.5 ${result === "win" ? "text-green-alive font-semibold" : ""}`}>
+      <div
+        className={`inline-flex items-center gap-1.5 ${
+          result === "win" ? "text-green-alive font-semibold" : result === "loss" ? "text-red" : ""
+        }`}
+      >
         <TeamBadge team={team} size={18} />
         {team}
         {suffix}
-      </span>
+      </div>
+      {note && <div className="text-[10px] text-text-dim">{note}</div>}
     </td>
   );
 }
@@ -230,22 +238,33 @@ function TopPickList({ picks }: { picks: TeamTopPick[] }) {
   }
   return (
     <div className="flex flex-col gap-2">
-      {picks.map((p, i) => (
-        <div
-          key={p.team}
-          className="flex justify-between items-center gap-2 bg-bg-deep border border-line rounded-lg px-3 py-2"
-        >
-          <span className={`text-[13px] flex items-center gap-1.5 ${p.result === "win" ? "text-green-alive font-semibold" : ""}`}>
-            <span className="text-accent font-semibold">#{i + 1}</span>
-            <TeamBadge team={p.team} size={18} />
-            {p.team}
-            {p.result === "win" ? " ✓" : ""}
-          </span>
-          <span className="text-[11px] text-text-dim whitespace-nowrap">
-            {p.picks} pick{p.picks === 1 ? "" : "s"}
-          </span>
-        </div>
-      ))}
+      {picks.map((p, i) => {
+        const note =
+          p.matchStage === "not_started" ? "Not started yet" : p.matchStage === "in_progress" ? "Match in progress" : null;
+        return (
+          <div
+            key={p.team}
+            className="flex justify-between items-center gap-2 bg-bg-deep border border-line rounded-lg px-3 py-2"
+          >
+            <div>
+              <span
+                className={`text-[13px] flex items-center gap-1.5 ${
+                  p.result === "win" ? "text-green-alive font-semibold" : p.result === "loss" ? "text-red" : ""
+                }`}
+              >
+                <span className="text-accent font-semibold">#{i + 1}</span>
+                <TeamBadge team={p.team} size={18} />
+                {p.team}
+                {p.result === "win" ? " ✓" : p.result === "loss" ? " ❌" : ""}
+              </span>
+              {note && <div className="text-[10px] text-text-dim ml-6">{note}</div>}
+            </div>
+            <span className="text-[11px] text-text-dim whitespace-nowrap">
+              {p.picks} pick{p.picks === 1 ? "" : "s"}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }

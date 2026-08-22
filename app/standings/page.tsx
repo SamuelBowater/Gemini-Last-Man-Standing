@@ -218,9 +218,9 @@ export default function StandingsPage() {
         {tab === "topPicks" &&
           (report.picksVisible && report.topPicks ? (
             <div className="grid sm:grid-cols-3 gap-5">
-              <TopPickColumn title="Forwards" picks={report.topPicks.forward} />
-              <TopPickColumn title="Midfielders" picks={report.topPicks.midfielder} />
-              <TopPickColumn title="Defenders" picks={report.topPicks.defender} />
+              <TopPickColumn title="Forwards" picks={report.topPicks.forward} resolved={report.resolved} liveStatus={liveStatus} />
+              <TopPickColumn title="Midfielders" picks={report.topPicks.midfielder} resolved={report.resolved} liveStatus={liveStatus} />
+              <TopPickColumn title="Defenders" picks={report.topPicks.defender} resolved={report.resolved} liveStatus={liveStatus} />
             </div>
           ) : (
             <EmptyNote>
@@ -291,7 +291,17 @@ function PickCell({
   );
 }
 
-function TopPickColumn({ title, picks }: { title: string; picks: TopPick[] }) {
+function TopPickColumn({
+  title,
+  picks,
+  resolved,
+  liveStatus,
+}: {
+  title: string;
+  picks: TopPick[];
+  resolved: boolean;
+  liveStatus: Record<string, "scored" | "no_goal" | "in_progress"> | null;
+}) {
   return (
     <div>
       <div className="text-[11px] font-semibold uppercase tracking-wide text-text-dim mb-2.5">{title}</div>
@@ -299,20 +309,39 @@ function TopPickColumn({ title, picks }: { title: string; picks: TopPick[] }) {
         <div className="text-[12.5px] text-text-dim">No picks recorded.</div>
       ) : (
         <div className="flex flex-col gap-2">
-          {picks.map((p, i) => (
-            <div
-              key={p.name}
-              className="flex justify-between items-center gap-2 bg-bg-deep border border-line rounded-lg px-3 py-2"
-            >
-              <span className={`text-[13px] ${p.scored ? "text-green-alive font-semibold" : ""}`}>
-                <span className="text-accent font-semibold">#{i + 1}</span> {p.name}
-                {p.scored ? " ⚽" : ""}
-              </span>
-              <span className="text-[11px] text-text-dim whitespace-nowrap">
-                {p.picks} pick{p.picks === 1 ? "" : "s"}
-              </span>
-            </div>
-          ))}
+          {picks.map((p, i) => {
+            const live = !resolved && liveStatus ? liveStatus[p.name.toLowerCase()] : undefined;
+            const isScored = p.scored || live === "scored";
+            const note =
+              !resolved && liveStatus
+                ? live === "in_progress"
+                  ? "Match in progress"
+                  : !live
+                    ? "Not started yet"
+                    : null
+                : null;
+            return (
+              <div
+                key={p.name}
+                className="flex justify-between items-center gap-2 bg-bg-deep border border-line rounded-lg px-3 py-2"
+              >
+                <div>
+                  <span
+                    className={`text-[13px] ${
+                      isScored ? "text-green-alive font-semibold" : live === "no_goal" ? "text-red" : ""
+                    }`}
+                  >
+                    <span className="text-accent font-semibold">#{i + 1}</span> {p.name}
+                    {isScored ? " ⚽" : live === "no_goal" ? " ❌" : ""}
+                  </span>
+                  {note && <div className="text-[10px] text-text-dim ml-4">{note}</div>}
+                </div>
+                <span className="text-[11px] text-text-dim whitespace-nowrap">
+                  {p.picks} pick{p.picks === 1 ? "" : "s"}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
