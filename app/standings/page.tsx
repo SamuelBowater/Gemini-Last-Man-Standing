@@ -43,6 +43,7 @@ export default function StandingsPage() {
   const [gw, setGw] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"selections" | "topPicks">("selections");
+  const [liveStatus, setLiveStatus] = useState<Record<string, "scored" | "no_goal"> | null>(null);
 
   const load = useCallback((targetGw?: number) => {
     return api(`/api/gameweek${targetGw ? `?gw=${targetGw}` : ""}`).then((data: GameweekReport) => {
@@ -55,6 +56,31 @@ export default function StandingsPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch on mount
     load().finally(() => setLoading(false));
   }, [load]);
+
+  // Before the admin logs official results, borrow the same live FPL feed used
+  // on the picks page so scorers still show up green here instead of everyone
+  // looking neutral until results are applied.
+  useEffect(() => {
+    if (!report || report.resolved || !report.picksVisible || report.gw !== report.currentGW) {
+      setLiveStatus(null);
+      return;
+    }
+    let cancelled = false;
+    api("/api/live-scorers")
+      .then((res) => {
+        if (!cancelled && res.ok) {
+          const lowered: Record<string, "scored" | "no_goal"> = {};
+          for (const [name, status] of Object.entries(res.players as Record<string, "scored" | "no_goal">)) {
+            lowered[name.toLowerCase()] = status;
+          }
+          setLiveStatus(lowered);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [report]);
 
   function changeGW(newGw: number) {
     setLoading(true);
@@ -145,7 +171,10 @@ export default function StandingsPage() {
                   {report.scorers.length > 0 ? report.scorers.map(titleCase).join(", ") : "Nobody scored."}
                 </>
               ) : report.picksVisible ? (
-                <>Picks are locked for gameweek {gw} — waiting on the admin to log results.</>
+                <>
+                  Picks are locked for gameweek {gw} — waiting on the admin to log results.
+                  {liveStatus && " Colours below are live and may lag or change until then."}
+                </>
               ) : (
                 <>
                   Gameweek {gw} hasn&apos;t been resolved yet — picks stay hidden until the
@@ -168,9 +197,9 @@ export default function StandingsPage() {
                   {report.players.map((p) => (
                     <tr key={p.id} className="border-b border-line">
                       <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">{p.name}</td>
-                      <PickCell revealed={report.picksVisible} name={p.forward} team={p.forwardTeam} scored={p.forwardScored} submitted={p.submitted} />
-                      <PickCell revealed={report.picksVisible} name={p.midfielder} team={p.midfielderTeam} scored={p.midfielderScored} submitted={p.submitted} />
-                      <PickCell revealed={report.picksVisible} name={p.defender} team={p.defenderTeam} scored={p.defenderScored} submitted={p.submitted} />
+                      <PickCell revealed={report.picksVisible} name={p.forward} team={p.forwardTeam} scored={p.forwardScored} submitted={p.submitted} liveStatus={liveStatus} />
+                      <PickCell revealed={report.picksVisible} name={p.midfielder} team={p.midfielderTeam} scored={p.midfielderScored} submitted={p.submitted} liveStatus={liveStatus} />
+                      <PickCell revealed={report.picksVisible} name={p.defender} team={p.defenderTeam} scored={p.defenderScored} submitted={p.submitted} liveStatus={liveStatus} />
                       <td className="py-2.5">
                         <Badge tone={p.overallStatus === "eliminated" ? "out" : "alive"}>
                           {p.overallStatus === "eliminated" ? "Eliminated" : "Active"}
@@ -207,12 +236,14 @@ function PickCell({
   team,
   scored,
   submitted,
+  liveStatus,
 }: {
   revealed: boolean;
   name: string | null;
   team: string | null;
   scored: boolean | null;
   submitted: boolean;
+  liveStatus: Record<string, "scored" | "no_goal"> | null;
 }) {
   if (!revealed) {
     return (
@@ -222,13 +253,30 @@ function PickCell({
   if (!name) {
     return <td className="py-2.5 pr-3 whitespace-nowrap text-text-dim">-</td>;
   }
+
+  // Official scored status (from applied results) always wins once it exists.
+  // Before that, fall back to the live feed so scorers still show up green —
+  // "no live entry yet" means their match hasn't kicked off.
+  const live = scored === null && liveStatus ? liveStatus[name.toLowerCase()] : undefined;
+  const isScored = scored === true || live === "scored";
+  const notStartedYet = scored === null && liveStatus && !live;
+
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap">
-      <div className={scored ? "text-green-alive font-semibold" : undefined}>
+      <div
+        className={
+          isScored
+            ? "text-green-alive font-semibold"
+            : live === "no_goal"
+              ? "text-red"
+              : undefined
+        }
+      >
         {name}
-        {scored ? " ⚽" : ""}
+        {isScored ? " ⚽" : ""}
       </div>
       {team && <div className="text-[10.5px] text-text-dim font-normal">{team}</div>}
+      {notStartedYet && <div className="text-[10px] text-text-dim">Not started yet</div>}
     </td>
   );
 }

@@ -215,7 +215,7 @@ function PickCell({
   const suffix = result === "win" ? " ✓" : result === "draw" ? " (draw)" : result === "loss" ? " (lost)" : "";
   return (
     <td className="py-2.5 pr-3 whitespace-nowrap">
-      <span className="inline-flex items-center gap-1.5">
+      <span className={`inline-flex items-center gap-1.5 ${result === "win" ? "text-green-alive font-semibold" : ""}`}>
         <TeamBadge team={team} size={18} />
         {team}
         {suffix}
@@ -235,7 +235,7 @@ function TopPickList({ picks }: { picks: TeamTopPick[] }) {
           key={p.team}
           className="flex justify-between items-center gap-2 bg-bg-deep border border-line rounded-lg px-3 py-2"
         >
-          <span className="text-[13px] flex items-center gap-1.5">
+          <span className={`text-[13px] flex items-center gap-1.5 ${p.result === "win" ? "text-green-alive font-semibold" : ""}`}>
             <span className="text-accent font-semibold">#{i + 1}</span>
             <TeamBadge team={p.team} size={18} />
             {p.team}
