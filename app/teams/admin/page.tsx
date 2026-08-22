@@ -478,11 +478,9 @@ function TeamResultsPanel({
         <PrimaryButton onClick={apply} disabled={busy}>
           {busy ? "Applying…" : `Apply results & advance`}
         </PrimaryButton>
-        {gameState.currentGW > 1 && (
-          <DangerButton onClick={undo} disabled={busy}>
-            🤦 Jason fucked up — undo last results
-          </DangerButton>
-        )}
+        <DangerButton onClick={undo} disabled={busy || gameState.currentGW <= 1} title={gameState.currentGW <= 1 ? "Nothing to undo yet." : undefined}>
+          🤦 Jason fucked up — undo last results
+        </DangerButton>
       </div>
       {msg && <div className="text-[13px] text-text-dim mt-2.5">{msg}</div>}
     </Panel>
