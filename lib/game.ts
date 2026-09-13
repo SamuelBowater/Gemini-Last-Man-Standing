@@ -13,8 +13,11 @@ export function officialFixturesUrl(season: string, gw: number) {
 }
 
 /** Picks lock 1 hour before the gameweek's first kickoff. Returns null if no kickoff times are set yet. */
-export function computePickDeadline(kickoffs: (string | null)[]): string | null {
-  const known = kickoffs.filter((k): k is string => Boolean(k)).sort();
+export function computePickDeadline(kickoffs: (string | Date | null)[]): string | null {
+  const known = kickoffs
+    .filter((k): k is string | Date => Boolean(k))
+    .map((k) => new Date(k).getTime())
+    .sort((a, b) => a - b);
   if (known.length === 0) return null;
-  return new Date(new Date(known[0]).getTime() - 60 * 60 * 1000).toISOString();
+  return new Date(known[0] - 60 * 60 * 1000).toISOString();
 }
