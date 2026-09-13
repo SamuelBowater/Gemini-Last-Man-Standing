@@ -61,7 +61,7 @@ export const POST = withErrors(async (req: NextRequest) => {
     );
 
     const submittedIds = new Set(picks.map((p) => p.participant_id));
-    const eliminatedIds: number[] = [];
+    let eliminatedIds: number[] = [];
 
     for (const p of picks) {
       if (!winnerSet.has(String(p.team).toLowerCase())) eliminatedIds.push(p.participant_id);
@@ -69,6 +69,12 @@ export const POST = withErrors(async (req: NextRequest) => {
     for (const row of alivePlayers) {
       if (!submittedIds.has(row.id)) eliminatedIds.push(row.id);
     }
+
+    // If the result would wipe out every remaining player (e.g. everyone's picked
+    // team drew), roll the gameweek over instead: nobody is eliminated and the
+    // whole field carries on to the next gameweek.
+    const rolledOver = alivePlayers.length > 0 && eliminatedIds.length >= alivePlayers.length;
+    if (rolledOver) eliminatedIds = [];
 
     if (eliminatedIds.length > 0) {
       await client.query(
@@ -78,9 +84,9 @@ export const POST = withErrors(async (req: NextRequest) => {
     }
 
     await client.query(
-      `INSERT INTO team_results (gw, winning_teams) VALUES ($1, $2)
-       ON CONFLICT (gw) DO UPDATE SET winning_teams = EXCLUDED.winning_teams, applied_at = now()`,
-      [gs.current_gw, JSON.stringify(winningTeamsDisplay)]
+      `INSERT INTO team_results (gw, winning_teams, rolled_over) VALUES ($1, $2, $3)
+       ON CONFLICT (gw) DO UPDATE SET winning_teams = EXCLUDED.winning_teams, rolled_over = EXCLUDED.rolled_over, applied_at = now()`,
+      [gs.current_gw, JSON.stringify(winningTeamsDisplay), rolledOver]
     );
 
     const { rows: stillAlive } = await client.query(
@@ -89,7 +95,7 @@ export const POST = withErrors(async (req: NextRequest) => {
 
     let newPhase = "picking";
     let newGW = gs.current_gw;
-    if (stillAlive[0].n <= 1) {
+    if (!rolledOver && stillAlive[0].n <= 1) {
       newPhase = "finished";
     } else {
       newGW = gs.current_gw + 1;
@@ -105,8 +111,9 @@ export const POST = withErrors(async (req: NextRequest) => {
     try {
       await sendPushToGamePlayers("can_play_teams", {
         title: `Team Survival — GW${gs.current_gw} results are in`,
-        body:
-          eliminatedIds.length > 0
+        body: rolledOver
+          ? "Nobody's team won — the gameweek rolls over and everyone's still in!"
+          : eliminatedIds.length > 0
             ? `${eliminatedIds.length} eliminated this week. Check if you survived!`
             : "Everyone survived this week!",
         url: "/teams/standings",
@@ -115,7 +122,13 @@ export const POST = withErrors(async (req: NextRequest) => {
       // never let a notification failure mask a successful results apply
     }
 
-    return NextResponse.json({ ok: true, phase: newPhase, currentGW: newGW, eliminated: eliminatedIds.length });
+    return NextResponse.json({
+      ok: true,
+      phase: newPhase,
+      currentGW: newGW,
+      eliminated: eliminatedIds.length,
+      rolledOver,
+    });
   } catch (err) {
     await client.query("ROLLBACK");
     return NextResponse.json({ error: String(err) }, { status: 500 });

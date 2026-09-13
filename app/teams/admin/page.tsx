@@ -403,14 +403,23 @@ function TeamResultsPanel({
   }
 
   async function apply() {
-    if (winningTeams.length === 0 && !confirm("No winning teams selected — this eliminates everyone who submitted picks. Continue?")) {
+    if (
+      winningTeams.length === 0 &&
+      !confirm(
+        "No winning teams selected — if that eliminates everyone remaining, the gameweek rolls over instead (nobody eliminated). Continue?"
+      )
+    ) {
       return;
     }
     setBusy(true);
     setMsg("");
     try {
       const res = await api("/api/admin/team-results", { method: "POST", body: JSON.stringify({ winningTeams }) });
-      setMsg(`Applied. ${res.eliminated} eliminated. Now on ${res.phase === "finished" ? "finished" : `GW${res.currentGW}`}.`);
+      setMsg(
+        res.rolledOver
+          ? `Nobody won — gameweek rolled over, everyone stays in. Now on GW${res.currentGW}.`
+          : `Applied. ${res.eliminated} eliminated. Now on ${res.phase === "finished" ? "finished" : `GW${res.currentGW}`}.`
+      );
       setWinningTeams([]);
       onChange();
     } catch (e) {

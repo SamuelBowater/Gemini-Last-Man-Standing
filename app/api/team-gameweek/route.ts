@@ -44,9 +44,13 @@ export const GET = withErrors(async (req: NextRequest) => {
   const currentGW = gsRows[0].current_gw;
   const gw = Number(req.nextUrl.searchParams.get("gw")) || currentGW;
 
-  const { rows: resultRows } = await pool.query("SELECT winning_teams FROM team_results WHERE gw = $1", [gw]);
+  const { rows: resultRows } = await pool.query(
+    "SELECT winning_teams, rolled_over FROM team_results WHERE gw = $1",
+    [gw]
+  );
   const resolved = resultRows.length > 0;
   const winningTeamsDisplay: string[] = resolved ? resultRows[0].winning_teams : [];
+  const rolledOver: boolean = resolved ? resultRows[0].rolled_over : false;
 
   const { rows: fixtures } = await pool.query(
     `SELECT home, away, kickoff, status, home_score AS "homeScore", away_score AS "awayScore"
@@ -113,6 +117,7 @@ export const GET = withErrors(async (req: NextRequest) => {
     resolved,
     picksVisible,
     winningTeams: [...winningTeamsDisplay].sort(),
+    rolledOver,
     rows: rowsMapped,
     poolStats,
     topPicks,

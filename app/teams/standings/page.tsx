@@ -140,10 +140,14 @@ export default function TeamStandingsPage() {
           <>
             <div className="text-[12.5px] text-text-dim mb-3">
               {report.resolved ? (
-                <>
-                  Winning teams:{" "}
-                  {report.winningTeams.length > 0 ? report.winningTeams.map(titleCase).join(", ") : "Nobody won."}
-                </>
+                report.rolledOver ? (
+                  <>Nobody&apos;s pick won this gameweek — it rolled over, so everyone&apos;s still in.</>
+                ) : (
+                  <>
+                    Winning teams:{" "}
+                    {report.winningTeams.length > 0 ? report.winningTeams.map(titleCase).join(", ") : "Nobody won."}
+                  </>
+                )
               ) : report.picksVisible ? (
                 <>Picks are locked for gameweek {gw} — waiting on the admin to log results.</>
               ) : (

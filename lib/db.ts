@@ -191,6 +191,7 @@ export function ensureSchema(): Promise<void> {
         winning_teams JSONB NOT NULL DEFAULT '[]',
         applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+      ALTER TABLE team_results ADD COLUMN IF NOT EXISTS rolled_over BOOLEAN NOT NULL DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS scot_game_state (
         id INTEGER PRIMARY KEY DEFAULT 1,
@@ -245,6 +246,7 @@ export function ensureSchema(): Promise<void> {
         winning_teams JSONB NOT NULL DEFAULT '[]',
         applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+      ALTER TABLE scot_team_results ADD COLUMN IF NOT EXISTS rolled_over BOOLEAN NOT NULL DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS push_subscriptions (
         id SERIAL PRIMARY KEY,
