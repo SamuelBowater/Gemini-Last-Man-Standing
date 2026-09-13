@@ -9,7 +9,7 @@ export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, locked FROM team_state WHERE id = 1"
+    "SELECT current_gw, phase, season, locked, reset_from_gw AS \"resetFromGw\" FROM team_state WHERE id = 1"
   );
   const gs = gsRows[0];
 
@@ -52,8 +52,8 @@ export const GET = withErrors(async () => {
         [gs.current_gw, participantId]
       );
       const { rows: usedRows } = await pool.query(
-        `SELECT team FROM team_picks WHERE participant_id = $1 AND gw != $2`,
-        [participantId, gs.current_gw]
+        `SELECT team FROM team_picks WHERE participant_id = $1 AND gw != $2 AND gw >= $3`,
+        [participantId, gs.current_gw, gs.resetFromGw]
       );
       const usedTeams = Array.from(new Set(usedRows.map((r) => r.team.toLowerCase())));
 

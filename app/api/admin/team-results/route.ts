@@ -71,12 +71,17 @@ export const POST = withErrors(async (req: NextRequest) => {
     }
 
     // If the result would wipe out every remaining player (e.g. everyone's picked
-    // team drew), roll the gameweek over instead: nobody is eliminated and the
+    // team drew), roll the gameweek over instead: everyone who's ever played —
+    // including players eliminated in earlier gameweeks — is reinstated, and the
     // whole field carries on to the next gameweek.
     const rolledOver = alivePlayers.length > 0 && eliminatedIds.length >= alivePlayers.length;
     if (rolledOver) eliminatedIds = [];
 
-    if (eliminatedIds.length > 0) {
+    if (rolledOver) {
+      await client.query(
+        `UPDATE participants SET team_status = 'alive', team_eliminated_gw = NULL WHERE can_play_teams = true`
+      );
+    } else if (eliminatedIds.length > 0) {
       await client.query(
         `UPDATE participants SET team_status = 'eliminated', team_eliminated_gw = $1 WHERE id = ANY($2::int[])`,
         [gs.current_gw, eliminatedIds]
@@ -101,10 +106,19 @@ export const POST = withErrors(async (req: NextRequest) => {
       newGW = gs.current_gw + 1;
     }
 
-    await client.query("UPDATE team_state SET phase = $1, current_gw = $2 WHERE id = 1", [
-      newPhase,
-      newGW,
-    ]);
+    if (rolledOver) {
+      // Teams picked before the rollover free up again — the field starts fresh
+      // from the new gameweek as if it were a new game.
+      await client.query(
+        "UPDATE team_state SET phase = $1, current_gw = $2, reset_from_gw = $2 WHERE id = 1",
+        [newPhase, newGW]
+      );
+    } else {
+      await client.query("UPDATE team_state SET phase = $1, current_gw = $2 WHERE id = 1", [
+        newPhase,
+        newGW,
+      ]);
+    }
 
     await client.query("COMMIT");
 
