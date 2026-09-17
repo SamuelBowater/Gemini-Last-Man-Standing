@@ -104,7 +104,10 @@ export default function TeamStandingsPage() {
               onChange={(e) => changeGW(Number(e.target.value))}
               className="bg-bg-deep border border-line-strong text-text text-[13px] font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-accent"
             >
-              {Array.from({ length: report.currentGW }, (_, i) => i + 1).map((n) => (
+              {Array.from(
+                { length: report.currentGW - (report.resetFromGw || 1) + 1 },
+                (_, i) => (report.resetFromGw || 1) + i
+              ).map((n) => (
                 <option key={n} value={n}>
                   Gameweek {n}
                   {n === report.currentGW ? " (Current)" : ""}

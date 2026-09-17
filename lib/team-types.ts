@@ -57,6 +57,7 @@ export interface TeamTopPick {
 export interface TeamGameweekReport {
   gw: number;
   currentGW: number;
+  resetFromGw?: number;
   resolved: boolean;
   picksVisible: boolean;
   winningTeams: string[];

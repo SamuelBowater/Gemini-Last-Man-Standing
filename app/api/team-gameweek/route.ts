@@ -40,8 +40,11 @@ async function topTeamPicks(gw: number, fixtures: FixtureLike[]): Promise<TeamTo
 export const GET = withErrors(async (req: NextRequest) => {
   await ensureSchema();
 
-  const { rows: gsRows } = await pool.query("SELECT current_gw, season FROM team_state WHERE id = 1");
+  const { rows: gsRows } = await pool.query(
+    "SELECT current_gw, season, reset_from_gw AS \"resetFromGw\" FROM team_state WHERE id = 1"
+  );
   const currentGW = gsRows[0].current_gw;
+  const resetFromGw = gsRows[0].resetFromGw;
   const gw = Number(req.nextUrl.searchParams.get("gw")) || currentGW;
 
   const { rows: resultRows } = await pool.query(
@@ -114,6 +117,7 @@ export const GET = withErrors(async (req: NextRequest) => {
   const report: TeamGameweekReport = {
     gw,
     currentGW,
+    resetFromGw,
     resolved,
     picksVisible,
     winningTeams: [...winningTeamsDisplay].sort(),

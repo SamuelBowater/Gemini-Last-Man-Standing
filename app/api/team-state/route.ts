@@ -61,9 +61,9 @@ export const GET = withErrors(async () => {
         `SELECT tp.gw, tp.team, tr.winning_teams AS "winningTeams"
          FROM team_picks tp
          LEFT JOIN team_results tr ON tr.gw = tp.gw
-         WHERE tp.participant_id = $1 AND tp.gw < $2
+         WHERE tp.participant_id = $1 AND tp.gw < $2 AND tp.gw >= $3
          ORDER BY tp.gw ASC`,
-        [participantId, gs.current_gw]
+        [participantId, gs.current_gw, gs.resetFromGw]
       );
       const { rows: historyFixtureRows } = await pool.query(
         `SELECT gw, home, away, status, home_score AS "homeScore", away_score AS "awayScore"
