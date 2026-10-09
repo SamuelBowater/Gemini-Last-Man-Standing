@@ -33,7 +33,7 @@ export const POST = withErrors(async (req: NextRequest) => {
     );
 
     const submittedIds = new Set(picks.map((p) => p.participant_id));
-    const eliminatedIds: number[] = [];
+    let eliminatedIds: number[] = [];
 
     for (const p of picks) {
       const hit =
@@ -46,7 +46,18 @@ export const POST = withErrors(async (req: NextRequest) => {
       if (!submittedIds.has(row.id)) eliminatedIds.push(row.id);
     }
 
-    if (eliminatedIds.length > 0) {
+    // If the result would wipe out every remaining player, roll the gameweek
+    // over instead: everyone who's ever played — including players eliminated
+    // in earlier gameweeks — is reinstated, and every player becomes available
+    // to everyone again from the next gameweek.
+    const rolledOver = alivePlayers.length > 0 && eliminatedIds.length >= alivePlayers.length;
+    if (rolledOver) eliminatedIds = [];
+
+    if (rolledOver) {
+      await client.query(
+        `UPDATE participants SET status = 'alive', eliminated_gw = NULL WHERE can_play_players = true`
+      );
+    } else if (eliminatedIds.length > 0) {
       await client.query(
         `UPDATE participants SET status = 'eliminated', eliminated_gw = $1 WHERE id = ANY($2::int[])`,
         [gs.current_gw, eliminatedIds]
@@ -54,9 +65,9 @@ export const POST = withErrors(async (req: NextRequest) => {
     }
 
     await client.query(
-      `INSERT INTO results (gw, scorers) VALUES ($1, $2)
-       ON CONFLICT (gw) DO UPDATE SET scorers = EXCLUDED.scorers, applied_at = now()`,
-      [gs.current_gw, JSON.stringify(Array.from(scorerSet))]
+      `INSERT INTO results (gw, scorers, rolled_over) VALUES ($1, $2, $3)
+       ON CONFLICT (gw) DO UPDATE SET scorers = EXCLUDED.scorers, rolled_over = EXCLUDED.rolled_over, applied_at = now()`,
+      [gs.current_gw, JSON.stringify(Array.from(scorerSet)), rolledOver]
     );
 
     const { rows: stillAlive } = await client.query(
@@ -65,24 +76,32 @@ export const POST = withErrors(async (req: NextRequest) => {
 
     let newPhase = "picking";
     let newGW = gs.current_gw;
-    if (stillAlive[0].n <= 1) {
+    if (!rolledOver && stillAlive[0].n <= 1) {
       newPhase = "finished";
     } else {
       newGW = gs.current_gw + 1;
     }
 
-    await client.query("UPDATE game_state SET phase = $1, current_gw = $2 WHERE id = 1", [
-      newPhase,
-      newGW,
-    ]);
+    if (rolledOver) {
+      await client.query(
+        "UPDATE game_state SET phase = $1, current_gw = $2, reset_from_gw = $2 WHERE id = 1",
+        [newPhase, newGW]
+      );
+    } else {
+      await client.query("UPDATE game_state SET phase = $1, current_gw = $2 WHERE id = 1", [
+        newPhase,
+        newGW,
+      ]);
+    }
 
     await client.query("COMMIT");
 
     try {
       await sendPushToGamePlayers("can_play_players", {
         title: `Player Picks — GW${gs.current_gw} results are in`,
-        body:
-          eliminatedIds.length > 0
+        body: rolledOver
+          ? "Nobody's picks scored — the gameweek rolls over and everyone's back in!"
+          : eliminatedIds.length > 0
             ? `${eliminatedIds.length} eliminated this week. Check if you survived!`
             : "Everyone survived this week!",
         url: "/standings",
@@ -91,7 +110,13 @@ export const POST = withErrors(async (req: NextRequest) => {
       // never let a notification failure mask a successful results apply
     }
 
-    return NextResponse.json({ ok: true, phase: newPhase, currentGW: newGW, eliminated: eliminatedIds.length });
+    return NextResponse.json({
+      ok: true,
+      phase: newPhase,
+      currentGW: newGW,
+      eliminated: eliminatedIds.length,
+      rolledOver,
+    });
   } catch (err) {
     await client.query("ROLLBACK");
     return NextResponse.json({ error: String(err) }, { status: 500 });

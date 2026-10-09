@@ -637,14 +637,23 @@ function ResultsPanel({ gameState, onChange }: { gameState: { currentGW: number;
   }
 
   async function apply() {
-    if (scorers.length === 0 && !confirm("No scorers entered — this eliminates everyone who submitted picks. Continue?")) {
+    if (
+      scorers.length === 0 &&
+      !confirm(
+        "No scorers entered — if that eliminates everyone remaining, the gameweek rolls over instead (everyone is reinstated). Continue?"
+      )
+    ) {
       return;
     }
     setBusy(true);
     setMsg("");
     try {
       const res = await api("/api/admin/results", { method: "POST", body: JSON.stringify({ scorers }) });
-      setMsg(`Applied. ${res.eliminated} eliminated. Now on ${res.phase === "finished" ? "finished" : `GW${res.currentGW}`}.`);
+      setMsg(
+        res.rolledOver
+          ? `Nobody scored — gameweek rolled over, everyone is back in. Now on GW${res.currentGW}.`
+          : `Applied. ${res.eliminated} eliminated. Now on ${res.phase === "finished" ? "finished" : `GW${res.currentGW}`}.`
+      );
       setScorers([]);
       onChange();
     } catch (e) {

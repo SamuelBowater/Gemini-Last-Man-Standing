@@ -71,6 +71,7 @@ export function ensureSchema(): Promise<void> {
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS reminder_sent_gw INTEGER;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS scottish_hidden BOOLEAN NOT NULL DEFAULT false;
+      ALTER TABLE game_state ADD COLUMN IF NOT EXISTS reset_from_gw INTEGER NOT NULL DEFAULT 1;
 
       CREATE TABLE IF NOT EXISTS participants (
         id SERIAL PRIMARY KEY,
@@ -118,6 +119,7 @@ export function ensureSchema(): Promise<void> {
         scorers JSONB NOT NULL DEFAULT '[]',
         applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+      ALTER TABLE results ADD COLUMN IF NOT EXISTS rolled_over BOOLEAN NOT NULL DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS fixtures (
         id SERIAL PRIMARY KEY,

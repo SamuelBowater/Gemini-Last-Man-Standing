@@ -106,8 +106,10 @@ export interface TopPick {
 export interface GameweekReport {
   gw: number;
   currentGW: number;
+  resetFromGw?: number;
   resolved: boolean;
   picksVisible: boolean;
+  rolledOver?: boolean;
   scorers: string[];
   players: GameweekPlayerRow[];
   poolStats: { total: number; stillStanding: number; eliminated: number };

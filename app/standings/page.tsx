@@ -132,7 +132,10 @@ export default function StandingsPage() {
               onChange={(e) => changeGW(Number(e.target.value))}
               className="bg-bg-deep border border-line-strong text-text text-[13px] font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-accent"
             >
-              {Array.from({ length: report.currentGW }, (_, i) => i + 1).map((n) => (
+              {Array.from(
+                { length: report.currentGW - (report.resetFromGw || 1) + 1 },
+                (_, i) => (report.resetFromGw || 1) + i
+              ).map((n) => (
                 <option key={n} value={n}>
                   Gameweek {n}
                   {n === report.currentGW ? " (Current)" : ""}
@@ -168,10 +171,14 @@ export default function StandingsPage() {
           <>
             <div className="text-[12.5px] text-text-dim mb-3">
               {report.resolved ? (
-                <>
-                  Scorers:{" "}
-                  {report.scorers.length > 0 ? report.scorers.map(titleCase).join(", ") : "Nobody scored."}
-                </>
+                report.rolledOver ? (
+                  <>None of the remaining picks scored this gameweek — it rolled over, so everyone&apos;s back in.</>
+                ) : (
+                  <>
+                    Scorers:{" "}
+                    {report.scorers.length > 0 ? report.scorers.map(titleCase).join(", ") : "Nobody scored."}
+                  </>
+                )
               ) : report.picksVisible ? (
                 <>
                   Picks are locked for gameweek {gw} — waiting on the admin to log results.

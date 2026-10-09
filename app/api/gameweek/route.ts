@@ -24,13 +24,17 @@ async function topPicksFor(
 export const GET = withErrors(async (req: NextRequest) => {
   await ensureSchema();
 
-  const { rows: gsRows } = await pool.query("SELECT current_gw, season FROM game_state WHERE id = 1");
+  const { rows: gsRows } = await pool.query(
+    "SELECT current_gw, season, reset_from_gw AS \"resetFromGw\" FROM game_state WHERE id = 1"
+  );
   const currentGW = gsRows[0].current_gw;
+  const resetFromGw = gsRows[0].resetFromGw;
   const season = gsRows[0].season;
   const gw = Number(req.nextUrl.searchParams.get("gw")) || currentGW;
 
-  const { rows: resultRows } = await pool.query("SELECT scorers FROM results WHERE gw = $1", [gw]);
+  const { rows: resultRows } = await pool.query("SELECT scorers, rolled_over FROM results WHERE gw = $1", [gw]);
   const resolved = resultRows.length > 0;
+  const rolledOver: boolean = resolved ? resultRows[0].rolled_over : false;
   const scorerSet = new Set<string>(
     resolved ? (resultRows[0].scorers as string[]).map((s) => s.toLowerCase()) : []
   );
@@ -117,8 +121,10 @@ export const GET = withErrors(async (req: NextRequest) => {
   const report: GameweekReport = {
     gw,
     currentGW,
+    resetFromGw,
     resolved,
     picksVisible,
+    rolledOver,
     scorers: Array.from(scorerSet).sort(),
     players,
     poolStats,

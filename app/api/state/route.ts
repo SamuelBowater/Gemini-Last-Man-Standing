@@ -8,7 +8,7 @@ export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, locked, scottish_hidden FROM game_state WHERE id = 1"
+    "SELECT current_gw, phase, season, locked, scottish_hidden, reset_from_gw AS \"resetFromGw\" FROM game_state WHERE id = 1"
   );
   const gs = gsRows[0];
 
@@ -47,8 +47,8 @@ export const GET = withErrors(async () => {
         [gs.current_gw, participantId]
       );
       const { rows: usedRows } = await pool.query(
-        `SELECT forward, midfielder, defender FROM picks WHERE participant_id = $1 AND gw != $2`,
-        [participantId, gs.current_gw]
+        `SELECT forward, midfielder, defender FROM picks WHERE participant_id = $1 AND gw != $2 AND gw >= $3`,
+        [participantId, gs.current_gw, gs.resetFromGw]
       );
       const usedPlayers = Array.from(
         new Set(usedRows.flatMap((r) => [r.forward, r.midfielder, r.defender]).map((n) => n.toLowerCase()))
@@ -58,9 +58,9 @@ export const GET = withErrors(async () => {
         `SELECT pk.gw, pk.forward, pk.midfielder, pk.defender, r.scorers
          FROM picks pk
          LEFT JOIN results r ON r.gw = pk.gw
-         WHERE pk.participant_id = $1 AND pk.gw < $2
+         WHERE pk.participant_id = $1 AND pk.gw < $2 AND pk.gw >= $3
          ORDER BY pk.gw ASC`,
-        [participantId, gs.current_gw]
+        [participantId, gs.current_gw, gs.resetFromGw]
       );
       const history = historyRows.map((r) => {
         const scorerSet = new Set<string>((r.scorers || []).map((s: string) => s.toLowerCase()));

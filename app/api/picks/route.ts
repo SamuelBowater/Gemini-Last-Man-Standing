@@ -19,7 +19,9 @@ export const POST = withErrors(async (req: NextRequest) => {
     return NextResponse.json({ error: "Pick a player for all three positions." }, { status: 400 });
   }
 
-  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season, locked FROM game_state WHERE id = 1");
+  const { rows: gsRows } = await pool.query(
+    "SELECT current_gw, phase, season, locked, reset_from_gw AS \"resetFromGw\" FROM game_state WHERE id = 1"
+  );
   const gs = gsRows[0];
   if (gs.locked) {
     return NextResponse.json({ error: "Picks aren't open yet." }, { status: 400 });
@@ -46,8 +48,8 @@ export const POST = withErrors(async (req: NextRequest) => {
   }
 
   const { rows: usedRows } = await pool.query(
-    "SELECT forward, midfielder, defender FROM picks WHERE participant_id = $1 AND gw != $2",
-    [participantId, gs.current_gw]
+    "SELECT forward, midfielder, defender FROM picks WHERE participant_id = $1 AND gw != $2 AND gw >= $3",
+    [participantId, gs.current_gw, gs.resetFromGw]
   );
   const used = new Set(
     usedRows.flatMap((r) => [r.forward, r.midfielder, r.defender]).map((n) => n.toLowerCase())
