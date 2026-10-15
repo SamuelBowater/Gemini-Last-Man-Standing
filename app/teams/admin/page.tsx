@@ -381,11 +381,39 @@ function TeamResultsPanel({
     setBusy(false);
   }
 
+  async function startNewGame() {
+    if (
+      !confirm(
+        `Start a new game from GW${gameState.currentGW + 1}? Everyone is reinstated and every team becomes available again. Past results stay visible.`
+      )
+    ) {
+      return;
+    }
+    setBusy(true);
+    setMsg("");
+    try {
+      const res = await api("/api/admin/team-new-game", { method: "POST" });
+      setMsg(`New game started — now on GW${res.currentGW}.`);
+      onChange();
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+    setBusy(false);
+  }
+
   if (gameState.phase === "finished") {
     return (
       <Panel>
         <PanelTitle>Results</PanelTitle>
-        <Sub>This pool has finished. Reset it from the main /admin page to start a new season.</Sub>
+        <Sub>
+          This game has finished. Start a new one to carry on at the next gameweek, or reset everything from the
+          main /admin page to start a new season.
+        </Sub>
+        <div className="mt-3 flex gap-2.5 flex-wrap">
+          <PrimaryButton onClick={startNewGame} disabled={busy}>
+            🆕 Start a new game from GW{gameState.currentGW + 1}
+          </PrimaryButton>
+        </div>
         <div className="mt-3">
           <DangerButton onClick={undo} disabled={busy}>
             {busy ? "Undoing…" : "🤦 Jason fucked up — undo last results"}

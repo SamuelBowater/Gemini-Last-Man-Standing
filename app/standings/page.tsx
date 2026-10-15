@@ -132,16 +132,24 @@ export default function StandingsPage() {
               onChange={(e) => changeGW(Number(e.target.value))}
               className="bg-bg-deep border border-line-strong text-text text-[13px] font-semibold rounded-lg px-3 py-1.5 focus:outline-none focus:border-accent"
             >
-              {Array.from(
-                { length: report.currentGW - (report.resetFromGw || 1) + 1 },
-                (_, i) => (report.resetFromGw || 1) + i
-              ).map((n) => (
+              {Array.from({ length: report.currentGW }, (_, i) => i + 1).map((n) => (
                 <option key={n} value={n}>
-                  Gameweek {n}
+                  {n === (report.resetFromGw || 1) && n > 1 ? "🆕 " : ""}Gameweek {n}
+                  {n === (report.resetFromGw || 1) && n > 1 ? " — new game" : ""}
                   {n === report.currentGW ? " (Current)" : ""}
                 </option>
               ))}
             </select>
+            {(report.resetFromGw || 1) > 1 && gw === report.resetFromGw && (
+              <div className="text-[11.5px] text-accent mt-1.5">
+                🆕 A new game started this gameweek — everyone was reinstated and every player became available again.
+              </div>
+            )}
+            {(report.resetFromGw || 1) > 1 && gw < (report.resetFromGw || 1) && (
+              <div className="text-[11.5px] text-text-dim mt-1.5">
+                📜 Previous game — this was before the rollover.
+              </div>
+            )}
           </div>
           {report.resolved && (
             <button
