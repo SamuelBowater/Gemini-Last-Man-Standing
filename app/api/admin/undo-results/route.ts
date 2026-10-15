@@ -11,12 +11,16 @@ const CONFIGS = {
     resultsTable: "results",
     statusCol: "status",
     eliminatedGwCol: "eliminated_gw",
+    logGame: "players",
+    canPlayCol: "can_play_players",
   },
   teams: {
     stateTable: "team_state",
     resultsTable: "team_results",
     statusCol: "team_status",
     eliminatedGwCol: "team_eliminated_gw",
+    logGame: "teams",
+    canPlayCol: "can_play_teams",
   },
   "scot-players": {
     stateTable: "scot_game_state",
@@ -66,11 +70,35 @@ export const POST = withErrors(async (req: NextRequest) => {
       return NextResponse.json({ error: "No applied results to undo." }, { status: 400 });
     }
 
-    await client.query(
-      `UPDATE participants SET ${config.statusCol} = 'alive', ${config.eliminatedGwCol} = NULL
-       WHERE ${config.eliminatedGwCol} = $1`,
-      [targetGW]
-    );
+    if ("logGame" in config) {
+      // Rebuild statuses from the elimination log so undoing a rollover or a
+      // restarted game brings back exactly who was out beforehand.
+      await client.query("DELETE FROM elimination_log WHERE game = $1 AND gw = $2", [config.logGame, targetGW]);
+      await client.query("DELETE FROM game_eras WHERE game = $1 AND start_gw > $2", [config.logGame, targetGW]);
+      const { rows: eraRows } = await client.query(
+        "SELECT coalesce(max(start_gw), 1)::int AS start FROM game_eras WHERE game = $1 AND start_gw <= $2",
+        [config.logGame, targetGW]
+      );
+      const eraStart = eraRows[0].start;
+      await client.query(
+        `UPDATE participants SET ${config.statusCol} = 'alive', ${config.eliminatedGwCol} = NULL
+         WHERE ${config.canPlayCol} = true`
+      );
+      await client.query(
+        `UPDATE participants p SET ${config.statusCol} = 'eliminated', ${config.eliminatedGwCol} = l.gw
+         FROM (SELECT participant_id, min(gw)::int AS gw FROM elimination_log
+               WHERE game = $1 AND gw >= $2 AND gw < $3 GROUP BY participant_id) l
+         WHERE p.id = l.participant_id`,
+        [config.logGame, eraStart, targetGW]
+      );
+      await client.query(`UPDATE ${config.stateTable} SET reset_from_gw = $1 WHERE id = 1`, [eraStart]);
+    } else {
+      await client.query(
+        `UPDATE participants SET ${config.statusCol} = 'alive', ${config.eliminatedGwCol} = NULL
+         WHERE ${config.eliminatedGwCol} = $1`,
+        [targetGW]
+      );
+    }
 
     await client.query(`DELETE FROM ${config.resultsTable} WHERE gw = $1`, [targetGW]);
 

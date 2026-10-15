@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
+import { eliminationsAsOf } from "@/lib/eliminations";
 import type { GameweekPlayerRow, GameweekReport, TopPick } from "@/lib/types";
 
 async function topPicksFor(
@@ -52,20 +53,20 @@ export const GET = withErrors(async (req: NextRequest) => {
   const picksLocked = Boolean(deadline && Date.now() >= new Date(deadline).getTime());
   const picksVisible = resolved || picksLocked;
 
-  const { rows } = await pool.query(
-    `SELECT p.id, p.name, p.status, p.eliminated_gw AS "eliminatedGW",
-            pk.forward, pk.midfielder, pk.defender
+  const eliminations = await eliminationsAsOf("players", gw);
+
+  const { rows: rawRows } = await pool.query(
+    `SELECT p.id, p.name, pk.forward, pk.midfielder, pk.defender
      FROM participants p
-     LEFT JOIN picks pk ON pk.participant_id = p.id AND pk.gw = $1
-     ORDER BY
-       CASE
-         WHEN p.eliminated_gw IS NULL OR p.eliminated_gw > $1 THEN 0
-         WHEN p.eliminated_gw = $1 THEN 1
-         ELSE 2
-       END,
-       p.name ASC`,
+     LEFT JOIN picks pk ON pk.participant_id = p.id AND pk.gw = $1`,
     [gw]
   );
+  const rows = rawRows
+    .map((r) => ({ ...r, eliminatedGW: eliminations.get(r.id) ?? null }))
+    .sort((a, b) => {
+      const rank = (e: number | null) => (e === null ? 0 : e === gw ? 1 : 2);
+      return rank(a.eliminatedGW) - rank(b.eliminatedGW) || String(a.name).localeCompare(String(b.name));
+    });
 
   const { rows: playerRows } = await pool.query(`SELECT name, team FROM players`);
   const teamByPlayer = new Map<string, string>(

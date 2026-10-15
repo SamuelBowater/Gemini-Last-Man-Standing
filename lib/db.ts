@@ -196,6 +196,18 @@ export function ensureSchema(): Promise<void> {
       );
       ALTER TABLE team_results ADD COLUMN IF NOT EXISTS rolled_over BOOLEAN NOT NULL DEFAULT false;
 
+      CREATE TABLE IF NOT EXISTS elimination_log (
+        game TEXT NOT NULL,
+        participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+        gw INTEGER NOT NULL,
+        PRIMARY KEY (game, participant_id, gw)
+      );
+      CREATE TABLE IF NOT EXISTS game_eras (
+        game TEXT NOT NULL,
+        start_gw INTEGER NOT NULL,
+        PRIMARY KEY (game, start_gw)
+      );
+
       CREATE TABLE IF NOT EXISTS scot_game_state (
         id INTEGER PRIMARY KEY DEFAULT 1,
         current_gw INTEGER NOT NULL DEFAULT 1,

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
+import { eliminationsAsOf } from "@/lib/eliminations";
 import type { TeamGameweekReport, TeamGameweekRow, TeamTopPick } from "@/lib/team-types";
 import { deriveTeamResult, findTeamFixture, type FixtureLike } from "@/lib/teams";
 import type { MatchStage } from "@/lib/team-types";
@@ -70,21 +71,21 @@ export const GET = withErrors(async (req: NextRequest) => {
   const picksLocked = Boolean(deadline && Date.now() >= new Date(deadline).getTime());
   const picksVisible = resolved || picksLocked;
 
-  const { rows } = await pool.query(
-    `SELECT p.id, p.name, p.team_status AS status, p.team_eliminated_gw AS "eliminatedGW",
-            tp.team
+  const eliminations = await eliminationsAsOf("teams", gw);
+
+  const { rows: rawRows } = await pool.query(
+    `SELECT p.id, p.name, tp.team
      FROM participants p
      LEFT JOIN team_picks tp ON tp.participant_id = p.id AND tp.gw = $1
-     WHERE p.can_play_teams = true
-     ORDER BY
-       CASE
-         WHEN p.team_eliminated_gw IS NULL OR p.team_eliminated_gw > $1 THEN 0
-         WHEN p.team_eliminated_gw = $1 THEN 1
-         ELSE 2
-       END,
-       p.name ASC`,
+     WHERE p.can_play_teams = true`,
     [gw]
   );
+  const rows = rawRows
+    .map((r) => ({ ...r, eliminatedGW: eliminations.get(r.id) ?? null }))
+    .sort((a, b) => {
+      const rank = (e: number | null) => (e === null ? 0 : e === gw ? 1 : 2);
+      return rank(a.eliminatedGW) - rank(b.eliminatedGW) || String(a.name).localeCompare(String(b.name));
+    });
 
   const rowsMapped: TeamGameweekRow[] = rows.map((r) => {
     const hasPick = r.team !== null;

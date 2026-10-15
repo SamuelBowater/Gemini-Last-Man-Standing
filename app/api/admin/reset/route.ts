@@ -10,8 +10,10 @@ export const POST = withErrors(async () => {
   await pool.query(
     `TRUNCATE picks, results, team_picks, team_results,
               scot_picks, scot_results, scot_team_picks, scot_team_results,
-              sessions, participants RESTART IDENTITY CASCADE`
+              sessions, participants, elimination_log, game_eras RESTART IDENTITY CASCADE`
   );
+  await pool.query("UPDATE game_state SET reset_from_gw = 1 WHERE id = 1");
+  await pool.query("UPDATE team_state SET reset_from_gw = 1 WHERE id = 1");
   await pool.query("UPDATE game_state SET current_gw = 1, phase = 'picking' WHERE id = 1");
   await pool.query("UPDATE team_state SET current_gw = 1, phase = 'picking' WHERE id = 1");
   await pool.query("UPDATE scot_game_state SET current_gw = 1, phase = 'picking' WHERE id = 1");

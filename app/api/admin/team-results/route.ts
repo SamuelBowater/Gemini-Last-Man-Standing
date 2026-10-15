@@ -81,9 +81,18 @@ export const POST = withErrors(async (req: NextRequest) => {
       await client.query(
         `UPDATE participants SET team_status = 'alive', team_eliminated_gw = NULL WHERE can_play_teams = true`
       );
+      await client.query(
+        "INSERT INTO game_eras (game, start_gw) VALUES ('teams', $1) ON CONFLICT DO NOTHING",
+        [gs.current_gw + 1]
+      );
     } else if (eliminatedIds.length > 0) {
       await client.query(
         `UPDATE participants SET team_status = 'eliminated', team_eliminated_gw = $1 WHERE id = ANY($2::int[])`,
+        [gs.current_gw, eliminatedIds]
+      );
+      await client.query(
+        `INSERT INTO elimination_log (game, participant_id, gw)
+         SELECT 'teams', unnest($2::int[]), $1 ON CONFLICT DO NOTHING`,
         [gs.current_gw, eliminatedIds]
       );
     }

@@ -29,6 +29,9 @@ export const POST = withErrors(async () => {
       "UPDATE team_state SET phase = 'picking', current_gw = $1, reset_from_gw = $1 WHERE id = 1",
       [startGW]
     );
+    await client.query("INSERT INTO game_eras (game, start_gw) VALUES ('teams', $1) ON CONFLICT DO NOTHING", [
+      startGW,
+    ]);
 
     await client.query("COMMIT");
     return NextResponse.json({ ok: true, currentGW: startGW });
