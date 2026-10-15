@@ -2,6 +2,24 @@ import { pool } from "@/lib/db";
 
 export type EliminationGame = "players" | "teams";
 
+export interface PreviousWinner {
+  name: string;
+  startGW: number;
+  endGW: number;
+}
+
+export async function previousWinners(game: EliminationGame): Promise<PreviousWinner[]> {
+  const { rows } = await pool.query(
+    `SELECT p.name, w.gw AS "endGW",
+            coalesce((SELECT max(start_gw) FROM game_eras e WHERE e.game = w.game AND e.start_gw <= w.gw), 1)::int AS "startGW"
+     FROM game_winners w JOIN participants p ON p.id = w.participant_id
+     WHERE w.game = $1
+     ORDER BY w.gw DESC`,
+    [game]
+  );
+  return rows;
+}
+
 /**
  * Who was eliminated, and when, as of `gw` within the game (era) that gameweek
  * belonged to. Rollovers and restarts reset participants' live status, so past

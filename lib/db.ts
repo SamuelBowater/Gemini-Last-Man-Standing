@@ -202,6 +202,12 @@ export function ensureSchema(): Promise<void> {
         gw INTEGER NOT NULL,
         PRIMARY KEY (game, participant_id, gw)
       );
+      CREATE TABLE IF NOT EXISTS game_winners (
+        game TEXT NOT NULL,
+        gw INTEGER NOT NULL,
+        participant_id INTEGER NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
+        PRIMARY KEY (game, gw, participant_id)
+      );
       CREATE TABLE IF NOT EXISTS game_eras (
         game TEXT NOT NULL,
         start_gw INTEGER NOT NULL,

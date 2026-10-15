@@ -74,6 +74,7 @@ export const POST = withErrors(async (req: NextRequest) => {
       // Rebuild statuses from the elimination log so undoing a rollover or a
       // restarted game brings back exactly who was out beforehand.
       await client.query("DELETE FROM elimination_log WHERE game = $1 AND gw = $2", [config.logGame, targetGW]);
+      await client.query("DELETE FROM game_winners WHERE game = $1 AND gw = $2", [config.logGame, targetGW]);
       await client.query("DELETE FROM game_eras WHERE game = $1 AND start_gw > $2", [config.logGame, targetGW]);
       const { rows: eraRows } = await client.query(
         "SELECT coalesce(max(start_gw), 1)::int AS start FROM game_eras WHERE game = $1 AND start_gw <= $2",

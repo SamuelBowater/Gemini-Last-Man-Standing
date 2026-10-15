@@ -94,6 +94,27 @@ export default function TeamStandingsPage() {
       </Panel>
 
       <Panel>
+        <PanelTitle>🏆 Previous winners</PanelTitle>
+        {report.previousWinners && report.previousWinners.length > 0 ? (
+          <div className="flex flex-col gap-2">
+            {report.previousWinners.map((w) => (
+              <div
+                key={`${w.name}-${w.endGW}`}
+                className="flex justify-between items-center bg-bg-deep border border-line rounded-xl px-4 py-3"
+              >
+                <span className="font-semibold">🏆 {w.name}</span>
+                <span className="text-[12px] text-text-dim">
+                  {w.startGW === w.endGW ? `GW${w.endGW}` : `GW${w.startGW}–${w.endGW}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyNote>No winners yet — the first one will appear here.</EmptyNote>
+        )}
+      </Panel>
+
+      <Panel>
         <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
           <div>
             <div className="text-[11px] text-text-dim uppercase tracking-wide mb-1">

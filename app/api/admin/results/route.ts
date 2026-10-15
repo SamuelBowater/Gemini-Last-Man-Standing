@@ -87,6 +87,12 @@ export const POST = withErrors(async (req: NextRequest) => {
     let newGW = gs.current_gw;
     if (!rolledOver && stillAlive[0].n <= 1) {
       newPhase = "finished";
+      await client.query(
+        `INSERT INTO game_winners (game, gw, participant_id)
+         SELECT 'players', $1, id FROM participants
+         WHERE status != 'eliminated' AND can_play_players = true ON CONFLICT DO NOTHING`,
+        [gs.current_gw]
+      );
     } else {
       newGW = gs.current_gw + 1;
     }

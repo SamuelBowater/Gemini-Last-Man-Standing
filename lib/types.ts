@@ -110,6 +110,7 @@ export interface GameweekReport {
   resolved: boolean;
   picksVisible: boolean;
   rolledOver?: boolean;
+  previousWinners?: { name: string; startGW: number; endGW: number }[];
   scorers: string[];
   players: GameweekPlayerRow[];
   poolStats: { total: number; stillStanding: number; eliminated: number };

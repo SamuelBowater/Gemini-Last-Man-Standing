@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
-import { eliminationsAsOf } from "@/lib/eliminations";
+import { eliminationsAsOf, previousWinners } from "@/lib/eliminations";
 import type { TeamGameweekReport, TeamGameweekRow, TeamTopPick } from "@/lib/team-types";
 import { deriveTeamResult, findTeamFixture, type FixtureLike } from "@/lib/teams";
 import type { MatchStage } from "@/lib/team-types";
@@ -123,6 +123,7 @@ export const GET = withErrors(async (req: NextRequest) => {
     picksVisible,
     winningTeams: [...winningTeamsDisplay].sort(),
     rolledOver,
+    previousWinners: await previousWinners("teams"),
     rows: rowsMapped,
     poolStats,
     topPicks,

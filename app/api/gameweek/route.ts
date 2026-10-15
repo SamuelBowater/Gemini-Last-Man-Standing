@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
-import { eliminationsAsOf } from "@/lib/eliminations";
+import { eliminationsAsOf, previousWinners } from "@/lib/eliminations";
 import type { GameweekPlayerRow, GameweekReport, TopPick } from "@/lib/types";
 
 async function topPicksFor(
@@ -126,6 +126,7 @@ export const GET = withErrors(async (req: NextRequest) => {
     resolved,
     picksVisible,
     rolledOver,
+    previousWinners: await previousWinners("players"),
     scorers: Array.from(scorerSet).sort(),
     players,
     poolStats,

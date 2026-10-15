@@ -62,6 +62,7 @@ export interface TeamGameweekReport {
   picksVisible: boolean;
   winningTeams: string[];
   rolledOver?: boolean;
+  previousWinners?: { name: string; startGW: number; endGW: number }[];
   rows: TeamGameweekRow[];
   poolStats: { total: number; stillStanding: number; eliminated: number };
   topPicks: TeamTopPick[] | null;
