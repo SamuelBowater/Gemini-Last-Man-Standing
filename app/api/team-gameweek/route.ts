@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { pool, ensureSchema } from "@/lib/db";
 import { computePickDeadline } from "@/lib/game";
 import { withErrors } from "@/lib/api-wrapper";
-import { eliminationsAsOf, previousWinners } from "@/lib/eliminations";
+import { livesAsOf, livesFor, previousWinners } from "@/lib/eliminations";
 import type { TeamGameweekReport, TeamGameweekRow, TeamTopPick } from "@/lib/team-types";
 import { deriveTeamResult, findTeamFixture, type FixtureLike } from "@/lib/teams";
 import type { MatchStage } from "@/lib/team-types";
@@ -42,7 +42,7 @@ export const GET = withErrors(async (req: NextRequest) => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, season, reset_from_gw AS \"resetFromGw\" FROM team_state WHERE id = 1"
+    "SELECT current_gw, season, lives_total AS \"livesTotal\", lives_from_gw AS \"livesFromGw\", reset_from_gw AS \"resetFromGw\" FROM team_state WHERE id = 1"
   );
   const currentGW = gsRows[0].current_gw;
   const resetFromGw = gsRows[0].resetFromGw;
@@ -71,7 +71,7 @@ export const GET = withErrors(async (req: NextRequest) => {
   const picksLocked = Boolean(deadline && Date.now() >= new Date(deadline).getTime());
   const picksVisible = resolved || picksLocked;
 
-  const eliminations = await eliminationsAsOf("teams", gw);
+  const { lives, livesTotal } = await livesAsOf("teams", gw, gsRows[0]);
 
   const { rows: rawRows } = await pool.query(
     `SELECT p.id, p.name, tp.team
@@ -81,10 +81,15 @@ export const GET = withErrors(async (req: NextRequest) => {
     [gw]
   );
   const rows = rawRows
-    .map((r) => ({ ...r, eliminatedGW: eliminations.get(r.id) ?? null }))
+    .map((r) => ({ ...r, ...livesFor(lives, r.id, livesTotal, gw) }))
     .sort((a, b) => {
+      // Still in (most lives first), then knocked out this week, then out earlier.
       const rank = (e: number | null) => (e === null ? 0 : e === gw ? 1 : 2);
-      return rank(a.eliminatedGW) - rank(b.eliminatedGW) || String(a.name).localeCompare(String(b.name));
+      return (
+        rank(a.eliminatedGW) - rank(b.eliminatedGW) ||
+        b.livesLeft - a.livesLeft ||
+        String(a.name).localeCompare(String(b.name))
+      );
     });
 
   const rowsMapped: TeamGameweekRow[] = rows.map((r) => {
@@ -97,6 +102,8 @@ export const GET = withErrors(async (req: NextRequest) => {
       id: r.id,
       name: r.name,
       overallStatus: statusAsOfGW,
+      livesLeft: r.livesLeft,
+      lostLifeThisGW: r.lostThisGW,
       submitted: hasPick,
       team,
       result: picksVisible && hasPick ? deriveTeamResult(fixture, r.team) : null,
@@ -119,6 +126,7 @@ export const GET = withErrors(async (req: NextRequest) => {
     gw,
     currentGW,
     resetFromGw,
+    livesTotal,
     resolved,
     picksVisible,
     winningTeams: [...winningTeamsDisplay].sort(),

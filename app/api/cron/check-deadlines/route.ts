@@ -40,13 +40,16 @@ export const GET = withErrors(async (req: NextRequest) => {
   const actions: { game: string; gw: number; sent: "reminder" | "locked" }[] = [];
 
   for (const game of GAMES) {
+    // Only Player Picks (game_state) can be paused; it shares the lock column's presence.
     const lockedSelect = game.hasLockColumn ? ", locked" : "";
+    const pausedSelect = game.stateTable === "game_state" ? ", paused" : "";
     const { rows } = await pool.query(
-      `SELECT current_gw, season, phase, reminder_sent_gw, locked_notified_gw${lockedSelect} FROM ${game.stateTable} WHERE id = 1`
+      `SELECT current_gw, season, phase, reminder_sent_gw, locked_notified_gw${lockedSelect}${pausedSelect} FROM ${game.stateTable} WHERE id = 1`
     );
     const gs = rows[0];
     if (!gs || gs.phase === "finished") continue;
     if (game.hasLockColumn && gs.locked) continue;
+    if (gs.paused) continue;
 
     const { rows: fixtureRows } = await pool.query(
       "SELECT kickoff FROM fixtures WHERE season = $1 AND gw = $2",

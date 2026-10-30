@@ -474,26 +474,36 @@ export default function Landing() {
               icon="⚽"
               eyebrow="Player Picks"
               title="Forward, Mid & Def"
-              description="Pick a forward, a midfielder and a defender every gameweek — one of them has to find the net or you're out."
+              description={
+                state.gameState.paused
+                  ? "Player Picks is paused for now. Team Survival is still running — jump into that in the meantime."
+                  : "Pick a forward, a midfielder and a defender every gameweek — one of them has to find the net or you're out."
+              }
               rules={[
                 "One player per position, every gameweek",
                 "Each player can only be used once all season",
                 "Survive as long as one of your three scores",
               ]}
               href="/players"
-              cta="Play Player Picks"
+              cta={state.gameState.paused ? "View Player Picks" : "Play Player Picks"}
               disabledLabel={!state.me.canPlayPlayers ? "Not in this pool" : undefined}
-              noticeLabel={state.me.canPlayPlayers && state.gameState.locked ? "🔒 Not open yet" : undefined}
+              noticeLabel={
+                state.me.canPlayPlayers && state.gameState.paused
+                  ? "⏸ Paused for now"
+                  : state.me.canPlayPlayers && state.gameState.locked
+                    ? "🔒 Not open yet"
+                    : undefined
+              }
             />
             <GameCard
               icon="🛡️"
               eyebrow="Team Survival"
               title="Pick a Team"
-              description="Pick one Premier League team each gameweek — if they win, you go through. If they lose, you're out."
+              description="Pick one Premier League team each gameweek — if they win, you go through. If they don't, you lose a life. You get 3."
               rules={[
                 "One team per gameweek, win and you survive",
                 "Each team can only be picked once all season",
-                "A draw or a loss knocks you out",
+                "A draw or a loss costs you a life — lose all 3 and you're out",
               ]}
               href="/teams"
               cta="Play Team Survival"

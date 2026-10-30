@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { Panel, PanelTitle, Badge, EmptyNote, LoadingScreen } from "@/components/ui";
 import { TeamBadge } from "@/components/team-badge";
+import { Lives } from "@/components/lives";
 import type { TeamGameweekReport, TeamTopPick } from "@/lib/team-types";
 
 async function api(path: string) {
@@ -18,12 +19,13 @@ function titleCase(s: string): string {
 }
 
 function toCSV(report: TeamGameweekReport): string {
-  const header = ["Player", "Team", "Result", "Status"];
+  const header = ["Player", "Team", "Result", "Status", "Lives left"];
   const lines = report.rows.map((r) => [
     r.name,
     r.team || "",
     r.result || "",
     r.overallStatus === "eliminated" ? "Eliminated" : "Active",
+    r.livesLeft === undefined ? "" : String(r.livesLeft),
   ]);
   return [header, ...lines].map((row) => row.map((cell) => `"${cell}"`).join(",")).join("\n");
 }
@@ -173,7 +175,7 @@ export default function TeamStandingsPage() {
             <div className="text-[12.5px] text-text-dim mb-3">
               {report.resolved ? (
                 report.rolledOver ? (
-                  <>Nobody&apos;s pick won this gameweek — it rolled over, so everyone&apos;s still in.</>
+                  <>Nobody&apos;s pick won this gameweek — it rolled over, so everyone&apos;s back on full lives.</>
                 ) : (
                   <>
                     Winning teams:{" "}
@@ -204,9 +206,16 @@ export default function TeamStandingsPage() {
                       <td className="py-2.5 pr-3 font-semibold whitespace-nowrap">{r.name}</td>
                       <PickCell revealed={report.picksVisible} team={r.team} result={r.result} matchStage={r.matchStage} submitted={r.submitted} />
                       <td className="py-2.5">
-                        <Badge tone={r.overallStatus === "eliminated" ? "out" : "alive"}>
-                          {r.overallStatus === "eliminated" ? "Eliminated" : "Active"}
-                        </Badge>
+                        {r.overallStatus === "eliminated" ? (
+                          <Badge tone="out">Eliminated</Badge>
+                        ) : r.livesLeft !== undefined && report.livesTotal ? (
+                          <span className="inline-flex items-center gap-2 whitespace-nowrap">
+                            <Lives left={r.livesLeft} total={report.livesTotal} />
+                            {r.lostLifeThisGW && <span className="text-[11px] text-red">−1 life</span>}
+                          </span>
+                        ) : (
+                          <Badge tone="alive">Active</Badge>
+                        )}
                       </td>
                     </tr>
                   ))}

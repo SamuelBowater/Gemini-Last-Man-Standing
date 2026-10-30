@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Panel, PanelTitle, Sub, GhostButton, DangerButton, Badge, EmptyNote, LoadingScreen, Modal } from "@/components/ui";
 import { TeamBadge } from "@/components/team-badge";
 import { ChangePinPanel } from "@/components/change-pin-panel";
+import { Lives } from "@/components/lives";
 import type { Fixture, Participant } from "@/lib/types";
 import type { TeamStateResponse, TeamMe, TeamGameState, TeamPickHistoryEntry } from "@/lib/team-types";
 import { deriveTeamResult, findTeamFixture, type FixtureLike } from "@/lib/teams";
@@ -118,7 +119,7 @@ export default function TeamSurvival() {
       />
 
       <Modal open={howItWorksOpen} onClose={() => setHowItWorksOpen(false)}>
-        <HowItWorks />
+        <HowItWorks lives={gameState.livesTotal ?? 3} />
       </Modal>
 
       <Modal open={fixturesOpen} onClose={() => setFixturesOpen(false)}>
@@ -127,8 +128,13 @@ export default function TeamSurvival() {
 
       {me && (
         <div className="flex justify-between items-center mb-4 text-[13px] text-text-dim">
-          <span>
-            Logged in as <strong className="text-text">{me.name}</strong>
+          <span className="flex items-center gap-2.5">
+            <span>
+              Logged in as <strong className="text-text">{me.name}</strong>
+            </span>
+            {me.canPlayTeams && me.livesLeft !== undefined && (
+              <Lives left={me.livesLeft} total={gameState.livesTotal ?? 3} className="text-[15px]" />
+            )}
           </span>
           <div className="flex items-center gap-2">
             <GhostButton className="px-3 py-1.5 text-[11px]" onClick={() => setPinModalOpen(true)}>
@@ -247,7 +253,7 @@ function Hero({
       </h1>
       <p className="text-text-dim text-[15px] max-w-[460px] mx-auto leading-relaxed">
         Pick one Premier League team every gameweek. Win and you go through — draw or lose and
-        you&apos;re out.
+        you lose a life. Run out of lives and you&apos;re out.
       </p>
       <div className="inline-flex mt-5 border border-line-strong rounded-[10px] overflow-hidden bg-bg-deep">
         {[
@@ -285,15 +291,15 @@ function Hero({
   );
 }
 
-function HowItWorks() {
+function HowItWorks({ lives }: { lives: number }) {
   const steps = [
     {
       title: "Pick a Team",
       body: "Every gameweek, choose one Premier League team from that week's fixtures.",
     },
     {
-      title: "Win to Survive",
-      body: "If your team wins, you live to fight another week. A draw or a loss knocks you out.",
+      title: `${lives} Lives`,
+      body: `You start with ${lives} lives. If your team wins, you're safe. A draw or a loss — or forgetting to pick — costs you a life, and when your last life goes you're out.`,
     },
     {
       title: "No Repeats",
@@ -301,7 +307,7 @@ function HowItWorks() {
     },
     {
       title: "Be the Last Man Standing",
-      body: "Keep surviving gameweek after gameweek — whoever's left standing at the end wins the whole pool.",
+      body: `Keep surviving gameweek after gameweek — whoever's left standing at the end wins the whole pool. If a gameweek would knock out everyone left, it rolls over and everyone is back on ${lives} lives.`,
     },
   ];
 
@@ -472,8 +478,8 @@ function PickZone({
           <Badge tone="out">Eliminated · GW{me.eliminatedGW}</Badge>
         </div>
         <Sub>
-          Your team didn&apos;t win in gameweek {me.eliminatedGW}. Stick around and watch the rest
-          of the pool play out below.
+          Your last life went in gameweek {me.eliminatedGW}. Stick around and watch the rest of the
+          pool play out below.
         </Sub>
       </Panel>
     );

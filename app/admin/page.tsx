@@ -97,6 +97,7 @@ function AdminDashboard() {
   const [signupCode, setSignupCode] = useState<string | null>(null);
   const [locked, setLocked] = useState(true);
   const [scottishHidden, setScottishHidden] = useState(false);
+  const [paused, setPaused] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -108,6 +109,7 @@ function AdminDashboard() {
     setSignupCode(settingsRes.signupCode);
     setLocked(settingsRes.locked);
     setScottishHidden(settingsRes.scottishHidden);
+    setPaused(settingsRes.paused);
   }, []);
 
   useEffect(() => {
@@ -155,7 +157,7 @@ function AdminDashboard() {
 
       <SignupCodePanel signupCode={signupCode} onChange={refresh} />
       <PlayersPanel players={players} onChange={refresh} />
-      <GamesPanel locked={locked} scottishHidden={scottishHidden} onChange={refresh} />
+      <GamesPanel locked={locked} paused={paused} scottishHidden={scottishHidden} onChange={refresh} />
       <NotificationsPanel />
       <DangerZone onChange={refresh} />
 
@@ -331,14 +333,17 @@ function PlayersPanel({ players, onChange }: { players: AdminParticipant[]; onCh
 
 function GamesPanel({
   locked,
+  paused,
   scottishHidden,
   onChange,
 }: {
   locked: boolean;
+  paused: boolean;
   scottishHidden: boolean;
   onChange: () => void;
 }) {
   const [busy, setBusy] = useState(false);
+  const [pausedBusy, setPausedBusy] = useState(false);
   const [scottishBusy, setScottishBusy] = useState(false);
 
   async function toggleLocked() {
@@ -350,6 +355,17 @@ function GamesPanel({
       // ignore — onChange() will re-fetch and the switch will reflect reality either way
     }
     setBusy(false);
+  }
+
+  async function togglePaused() {
+    setPausedBusy(true);
+    try {
+      await api("/api/admin/settings", { method: "POST", body: JSON.stringify({ paused: !paused }) });
+      onChange();
+    } catch {
+      // ignore — onChange() will re-fetch and the switch will reflect reality either way
+    }
+    setPausedBusy(false);
   }
 
   async function toggleScottishHidden() {
@@ -389,6 +405,32 @@ function GamesPanel({
           <span
             className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
               locked ? "translate-x-6" : "translate-x-1"
+            }`}
+          />
+        </button>
+      </div>
+
+      <div className="flex justify-between items-center bg-bg-deep border border-line rounded-lg px-3.5 py-3 mb-2">
+        <div>
+          <div className="font-semibold">⏸ Pause Player Picks</div>
+          <div className="text-[11.5px] text-text-dim mt-0.5">
+            Stops new picks and reminders for Player Picks only — Team Survival carries on. The
+            home page card says &quot;Paused for now&quot; and players can still see past picks and standings.
+          </div>
+        </div>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={paused}
+          onClick={togglePaused}
+          disabled={pausedBusy}
+          className={`shrink-0 ml-3 w-12 h-7 rounded-full relative transition disabled:opacity-50 ${
+            paused ? "bg-accent" : "bg-line-strong"
+          }`}
+        >
+          <span
+            className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+              paused ? "translate-x-6" : "translate-x-1"
             }`}
           />
         </button>

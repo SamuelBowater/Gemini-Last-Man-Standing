@@ -20,11 +20,14 @@ export const POST = withErrors(async (req: NextRequest) => {
   }
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, locked, reset_from_gw AS \"resetFromGw\" FROM game_state WHERE id = 1"
+    "SELECT current_gw, phase, season, locked, paused, reset_from_gw AS \"resetFromGw\" FROM game_state WHERE id = 1"
   );
   const gs = gsRows[0];
   if (gs.locked) {
     return NextResponse.json({ error: "Picks aren't open yet." }, { status: 400 });
+  }
+  if (gs.paused) {
+    return NextResponse.json({ error: "Player Picks is paused right now." }, { status: 400 });
   }
   if (gs.phase !== "picking") {
     return NextResponse.json({ error: "Picks aren't open right now." }, { status: 400 });
@@ -82,10 +85,13 @@ export const DELETE = withErrors(async () => {
     return NextResponse.json({ error: "Not logged in." }, { status: 401 });
   }
 
-  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season, locked FROM game_state WHERE id = 1");
+  const { rows: gsRows } = await pool.query("SELECT current_gw, phase, season, locked, paused FROM game_state WHERE id = 1");
   const gs = gsRows[0];
   if (gs.locked) {
     return NextResponse.json({ error: "Picks aren't open yet." }, { status: 400 });
+  }
+  if (gs.paused) {
+    return NextResponse.json({ error: "Player Picks is paused right now." }, { status: 400 });
   }
   if (gs.phase !== "picking") {
     return NextResponse.json({ error: "Picks aren't open right now." }, { status: 400 });

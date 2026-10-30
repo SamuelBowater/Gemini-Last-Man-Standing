@@ -72,6 +72,7 @@ export function ensureSchema(): Promise<void> {
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS scottish_hidden BOOLEAN NOT NULL DEFAULT false;
       ALTER TABLE game_state ADD COLUMN IF NOT EXISTS reset_from_gw INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE game_state ADD COLUMN IF NOT EXISTS paused BOOLEAN NOT NULL DEFAULT false;
 
       CREATE TABLE IF NOT EXISTS participants (
         id SERIAL PRIMARY KEY,
@@ -179,6 +180,12 @@ export function ensureSchema(): Promise<void> {
       ALTER TABLE team_state ADD COLUMN IF NOT EXISTS reminder_sent_gw INTEGER;
       ALTER TABLE team_state ADD COLUMN IF NOT EXISTS locked_notified_gw INTEGER;
       ALTER TABLE team_state ADD COLUMN IF NOT EXISTS reset_from_gw INTEGER NOT NULL DEFAULT 1;
+      ALTER TABLE team_state ADD COLUMN IF NOT EXISTS lives_total INTEGER NOT NULL DEFAULT 3;
+      -- Lives only apply to games (eras) starting at or after this gameweek; earlier eras
+      -- were single-life and must keep reading that way. Stamped once with the era that's
+      -- current when lives are first switched on.
+      ALTER TABLE team_state ADD COLUMN IF NOT EXISTS lives_from_gw INTEGER;
+      UPDATE team_state SET lives_from_gw = reset_from_gw WHERE lives_from_gw IS NULL;
 
       CREATE TABLE IF NOT EXISTS team_picks (
         id SERIAL PRIMARY KEY,

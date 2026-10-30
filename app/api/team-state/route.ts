@@ -4,14 +4,20 @@ import { getCurrentParticipantId } from "@/lib/session";
 import { officialFixturesUrl, computePickDeadline } from "@/lib/game";
 import { deriveTeamResult, findTeamFixture } from "@/lib/teams";
 import { withErrors } from "@/lib/api-wrapper";
+import { livesAsOf, livesFor } from "@/lib/eliminations";
 
 export const GET = withErrors(async () => {
   await ensureSchema();
 
   const { rows: gsRows } = await pool.query(
-    "SELECT current_gw, phase, season, locked, reset_from_gw AS \"resetFromGw\" FROM team_state WHERE id = 1"
+    "SELECT current_gw, phase, season, locked, lives_total AS \"livesTotal\", lives_from_gw AS \"livesFromGw\", reset_from_gw AS \"resetFromGw\" FROM team_state WHERE id = 1"
   );
   const gs = gsRows[0];
+  const { lives, livesTotal } = await livesAsOf("teams", gs.current_gw, gs);
+  const withLives = <T extends { id: number }>(p: T) => ({
+    ...p,
+    livesLeft: livesFor(lives, p.id, livesTotal, gs.current_gw).livesLeft,
+  });
 
   const { rows: participants } = await pool.query(
     `SELECT id, name, team_status AS status, team_eliminated_gw AS "eliminatedGW",
@@ -89,7 +95,7 @@ export const GET = withErrors(async () => {
       });
 
       me = {
-        ...meRows[0],
+        ...withLives(meRows[0]),
         pick: pickRows[0] || null,
         usedTeams,
         history,
@@ -106,8 +112,9 @@ export const GET = withErrors(async () => {
       season: gs.season,
       pickDeadline,
       locked: gs.locked,
+      livesTotal,
     },
-    participants: participants.map((p) => ({ ...p, submitted: submittedSet.has(p.id) })),
+    participants: participants.map((p) => ({ ...withLives(p), submitted: submittedSet.has(p.id) })),
     fixtures,
     officialFixturesUrl: officialFixturesUrl(gs.season, gs.current_gw),
     availableTeams,

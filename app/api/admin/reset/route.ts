@@ -13,7 +13,7 @@ export const POST = withErrors(async () => {
               sessions, participants, elimination_log, game_eras, game_winners RESTART IDENTITY CASCADE`
   );
   await pool.query("UPDATE game_state SET reset_from_gw = 1 WHERE id = 1");
-  await pool.query("UPDATE team_state SET reset_from_gw = 1 WHERE id = 1");
+  await pool.query("UPDATE team_state SET reset_from_gw = 1, lives_from_gw = 1 WHERE id = 1");
   await pool.query("UPDATE game_state SET current_gw = 1, phase = 'picking' WHERE id = 1");
   await pool.query("UPDATE team_state SET current_gw = 1, phase = 'picking' WHERE id = 1");
   await pool.query("UPDATE scot_game_state SET current_gw = 1, phase = 'picking' WHERE id = 1");

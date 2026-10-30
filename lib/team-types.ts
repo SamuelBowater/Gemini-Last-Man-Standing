@@ -7,6 +7,7 @@ export interface TeamGameState {
   season: string;
   pickDeadline: string | null;
   locked: boolean;
+  livesTotal?: number;
 }
 
 export interface TeamPick {
@@ -40,6 +41,9 @@ export interface TeamGameweekRow {
   id: number;
   name: string;
   overallStatus: "alive" | "eliminated";
+  /** Team Survival only — the Scottish variant is still single-life. */
+  livesLeft?: number;
+  lostLifeThisGW?: boolean;
   submitted: boolean;
   team: string | null;
   result: TeamResult | null;
@@ -58,6 +62,7 @@ export interface TeamGameweekReport {
   gw: number;
   currentGW: number;
   resetFromGw?: number;
+  livesTotal?: number;
   resolved: boolean;
   picksVisible: boolean;
   winningTeams: string[];

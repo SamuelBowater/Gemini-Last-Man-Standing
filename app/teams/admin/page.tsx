@@ -366,7 +366,7 @@ function TeamResultsPanel({
   }, [gameState.currentGW]);
 
   async function undo() {
-    if (!confirm("Undo the last applied results? This restores everyone eliminated that gameweek and lets you re-apply once you're sure.")) {
+    if (!confirm("Undo the last applied results? This gives back the lives lost (and restores anyone knocked out) that gameweek and lets you re-apply once you're sure.")) {
       return;
     }
     setBusy(true);
@@ -434,7 +434,7 @@ function TeamResultsPanel({
     if (
       winningTeams.length === 0 &&
       !confirm(
-        "No winning teams selected — if that eliminates everyone remaining, the gameweek rolls over instead (nobody eliminated). Continue?"
+        "No winning teams selected — everyone loses a life, and if that would knock out everyone remaining, the gameweek rolls over instead (nobody loses a life, everyone back on full lives). Continue?"
       )
     ) {
       return;
@@ -445,8 +445,8 @@ function TeamResultsPanel({
       const res = await api("/api/admin/team-results", { method: "POST", body: JSON.stringify({ winningTeams }) });
       setMsg(
         res.rolledOver
-          ? `Nobody won — gameweek rolled over, everyone stays in. Now on GW${res.currentGW}.`
-          : `Applied. ${res.eliminated} eliminated. Now on ${res.phase === "finished" ? "finished" : `GW${res.currentGW}`}.`
+          ? `Nobody left would have survived — gameweek rolled over, everyone's back on full lives. Now on GW${res.currentGW}.`
+          : `Applied. ${res.lostLife ?? 0} lost a life, ${res.eliminated} knocked out. Now on ${res.phase === "finished" ? "finished" : `GW${res.currentGW}`}.`
       );
       setWinningTeams([]);
       onChange();
@@ -463,7 +463,7 @@ function TeamResultsPanel({
       <PanelTitle>Results · Gameweek {gameState.currentGW}</PanelTitle>
       <Sub>
         Tap the team that won each match below — anyone whose picked team isn&apos;t marked as a
-        winner goes out. Matches without a final score yet can&apos;t be marked.
+        winner loses a life. Matches without a final score yet can&apos;t be marked.
       </Sub>
       <div className="flex items-center gap-3 mb-3">
         <button
@@ -509,7 +509,7 @@ function TeamResultsPanel({
                 )}
                 {isDraw && (
                   <div className="text-[11px] text-text-dim mt-1.5">
-                    🤝 Draw — no team wins, both picks are eliminated automatically.
+                    🤝 Draw — no team wins, so both picks lose a life.
                   </div>
                 )}
               </div>

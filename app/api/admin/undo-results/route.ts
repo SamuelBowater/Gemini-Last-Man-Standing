@@ -85,12 +85,26 @@ export const POST = withErrors(async (req: NextRequest) => {
         `UPDATE participants SET ${config.statusCol} = 'alive', ${config.eliminatedGwCol} = NULL
          WHERE ${config.canPlayCol} = true`
       );
+      // Each log row is a life lost, so a player is out once their livesTotal-th loss
+      // is on the board — and that loss's gameweek is when they were eliminated.
+      // (Player Picks is a single-life game, so there that's simply their first loss.)
+      const livesTotal: number =
+        game === "teams"
+          ? await (async () => {
+              const { rows } = await client.query("SELECT lives_total, lives_from_gw FROM team_state WHERE id = 1");
+              // Eras before lives were switched on were single-life games.
+              return eraStart >= rows[0].lives_from_gw ? (rows[0].lives_total as number) : 1;
+            })()
+          : 1;
       await client.query(
         `UPDATE participants p SET ${config.statusCol} = 'eliminated', ${config.eliminatedGwCol} = l.gw
-         FROM (SELECT participant_id, min(gw)::int AS gw FROM elimination_log
-               WHERE game = $1 AND gw >= $2 AND gw < $3 GROUP BY participant_id) l
+         FROM (SELECT participant_id, gw FROM (
+                 SELECT participant_id, gw,
+                        row_number() OVER (PARTITION BY participant_id ORDER BY gw) AS n
+                 FROM elimination_log WHERE game = $1 AND gw >= $2 AND gw < $3
+               ) t WHERE n = $4) l
          WHERE p.id = l.participant_id`,
-        [config.logGame, eraStart, targetGW]
+        [config.logGame, eraStart, targetGW, livesTotal]
       );
       await client.query(`UPDATE ${config.stateTable} SET reset_from_gw = $1 WHERE id = 1`, [eraStart]);
     } else {

@@ -18,7 +18,7 @@ export const POST = withErrors(async (req: NextRequest) => {
     await client.query("BEGIN");
 
     const { rows: gsRows } = await client.query(
-      "SELECT current_gw, season, phase FROM team_state WHERE id = 1 FOR UPDATE"
+      "SELECT current_gw, season, phase, lives_total, lives_from_gw, reset_from_gw FROM team_state WHERE id = 1 FOR UPDATE"
     );
     const gs = gsRows[0];
     if (gs.phase !== "picking") {
@@ -61,21 +61,40 @@ export const POST = withErrors(async (req: NextRequest) => {
     );
 
     const submittedIds = new Set(picks.map((p) => p.participant_id));
-    let eliminatedIds: number[] = [];
 
+    // Everyone whose team didn't win — or who didn't pick at all — loses a life.
+    const failedIds: number[] = [];
     for (const p of picks) {
-      if (!winnerSet.has(String(p.team).toLowerCase())) eliminatedIds.push(p.participant_id);
+      if (!winnerSet.has(String(p.team).toLowerCase())) failedIds.push(p.participant_id);
     }
     for (const row of alivePlayers) {
-      if (!submittedIds.has(row.id)) eliminatedIds.push(row.id);
+      if (!submittedIds.has(row.id)) failedIds.push(row.id);
     }
 
-    // If the result would wipe out every remaining player (e.g. everyone's picked
-    // team drew), roll the gameweek over instead: everyone who's ever played —
-    // including players eliminated in earlier gameweeks — is reinstated, and the
-    // whole field carries on to the next gameweek.
+    // Lives already lost earlier in this game (era) decide who that was the last
+    // life for. Rows for this gameweek are excluded so re-applying can't double count.
+    // (If an undo has stepped back into a game from before lives existed, it stays single-life.)
+    const livesTotal: number = gs.reset_from_gw >= gs.lives_from_gw ? gs.lives_total : 1;
+    const { rows: lossRows } =
+      failedIds.length > 0
+        ? await client.query(
+            `SELECT participant_id, count(*)::int AS lost FROM elimination_log
+             WHERE game = 'teams' AND gw >= $1 AND gw < $2 AND participant_id = ANY($3::int[])
+             GROUP BY participant_id`,
+            [gs.reset_from_gw, gs.current_gw, failedIds]
+          )
+        : { rows: [] as { participant_id: number; lost: number }[] };
+    const priorLost = new Map<number, number>(lossRows.map((r) => [r.participant_id, r.lost]));
+    let eliminatedIds = failedIds.filter((id) => (priorLost.get(id) ?? 0) + 1 >= livesTotal);
+
+    // If the result would knock out every remaining player (e.g. everyone left is on
+    // their last life and their team drew), roll the gameweek over instead: nobody
+    // loses a life, everyone who's ever played — including players eliminated in
+    // earlier gameweeks — is reinstated on full lives, and the whole field carries
+    // on to the next gameweek.
     const rolledOver = alivePlayers.length > 0 && eliminatedIds.length >= alivePlayers.length;
     if (rolledOver) eliminatedIds = [];
+    const lostLifeCount = rolledOver ? 0 : failedIds.length - eliminatedIds.length;
 
     if (rolledOver) {
       await client.query(
@@ -85,16 +104,19 @@ export const POST = withErrors(async (req: NextRequest) => {
         "INSERT INTO game_eras (game, start_gw) VALUES ('teams', $1) ON CONFLICT DO NOTHING",
         [gs.current_gw + 1]
       );
-    } else if (eliminatedIds.length > 0) {
-      await client.query(
-        `UPDATE participants SET team_status = 'eliminated', team_eliminated_gw = $1 WHERE id = ANY($2::int[])`,
-        [gs.current_gw, eliminatedIds]
-      );
+    } else if (failedIds.length > 0) {
+      // Every failure is a life lost, logged; only those out of lives are eliminated.
       await client.query(
         `INSERT INTO elimination_log (game, participant_id, gw)
          SELECT 'teams', unnest($2::int[]), $1 ON CONFLICT DO NOTHING`,
-        [gs.current_gw, eliminatedIds]
+        [gs.current_gw, failedIds]
       );
+      if (eliminatedIds.length > 0) {
+        await client.query(
+          `UPDATE participants SET team_status = 'eliminated', team_eliminated_gw = $1 WHERE id = ANY($2::int[])`,
+          [gs.current_gw, eliminatedIds]
+        );
+      }
     }
 
     await client.query(
@@ -141,9 +163,14 @@ export const POST = withErrors(async (req: NextRequest) => {
       await sendPushToGamePlayers("can_play_teams", {
         title: `Team Survival — GW${gs.current_gw} results are in`,
         body: rolledOver
-          ? "Nobody's team won — the gameweek rolls over and everyone's still in!"
-          : eliminatedIds.length > 0
-            ? `${eliminatedIds.length} eliminated this week. Check if you survived!`
+          ? `Nobody's team won — the gameweek rolls over and everyone's back on ${livesTotal} lives!`
+          : failedIds.length > 0
+            ? [
+                lostLifeCount > 0 ? `${lostLifeCount} lost a life` : null,
+                eliminatedIds.length > 0 ? `${eliminatedIds.length} knocked out` : null,
+              ]
+                .filter(Boolean)
+                .join(", ") + " this week. Check how many lives you've got left!"
             : "Everyone survived this week!",
         url: "/teams/standings",
       });
@@ -156,6 +183,7 @@ export const POST = withErrors(async (req: NextRequest) => {
       phase: newPhase,
       currentGW: newGW,
       eliminated: eliminatedIds.length,
+      lostLife: lostLifeCount,
       rolledOver,
     });
   } catch (err) {

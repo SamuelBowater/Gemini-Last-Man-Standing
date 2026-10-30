@@ -218,7 +218,17 @@ export default function Home() {
         </Panel>
       )}
 
-      {me && me.canPlayPlayers && !gameState.locked && gameState.phase !== "finished" && (
+      {me && me.canPlayPlayers && !gameState.locked && gameState.paused && (
+        <Panel>
+          <PanelTitle>⏸ Paused</PanelTitle>
+          <Sub>
+            Player Picks is paused right now, so there&apos;s nothing to pick this week. Team Survival
+            is still running — head back to the home page to jump in.
+          </Sub>
+        </Panel>
+      )}
+
+      {me && me.canPlayPlayers && !gameState.locked && !gameState.paused && gameState.phase !== "finished" && (
         <PickZone me={me} gameState={gameState} players={players} onDone={refresh} />
       )}
 

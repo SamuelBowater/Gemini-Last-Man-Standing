@@ -19,6 +19,7 @@ export interface GameState {
   season: string;
   pickDeadline: string | null;
   locked: boolean;
+  paused: boolean;
   scottishHidden: boolean;
 }
 
@@ -27,6 +28,8 @@ export interface Participant {
   name: string;
   status: "alive" | "eliminated";
   eliminatedGW: number | null;
+  /** Only set for games with more than one life (Team Survival). */
+  livesLeft?: number;
   submitted?: boolean;
   canPlayPlayers: boolean;
   canPlayTeams: boolean;

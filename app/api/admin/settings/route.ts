@@ -7,7 +7,7 @@ export const GET = withErrors(async () => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
   const { rows } = await pool.query(
-    `SELECT season, signup_code AS "signupCode", locked, scottish_hidden AS "scottishHidden" FROM game_state WHERE id = 1`
+    `SELECT season, signup_code AS "signupCode", locked, paused, scottish_hidden AS "scottishHidden" FROM game_state WHERE id = 1`
   );
   return NextResponse.json(rows[0]);
 });
@@ -15,9 +15,9 @@ export const GET = withErrors(async () => {
 export const POST = withErrors(async (req: NextRequest) => {
   await ensureSchema();
   if (!(await isAdmin())) return NextResponse.json({ error: "Not authorized." }, { status: 401 });
-  const { season, signupCode, locked, scottishHidden } = await req.json().catch(() => ({}));
+  const { season, signupCode, locked, paused, scottishHidden } = await req.json().catch(() => ({}));
 
-  if (season === undefined && signupCode === undefined && locked === undefined && scottishHidden === undefined) {
+  if (season === undefined && signupCode === undefined && locked === undefined && paused === undefined && scottishHidden === undefined) {
     return NextResponse.json({ error: "Nothing to update." }, { status: 400 });
   }
 
@@ -40,6 +40,14 @@ export const POST = withErrors(async (req: NextRequest) => {
     // One combined toggle locks both main-season games together.
     await pool.query("UPDATE game_state SET locked = $1 WHERE id = 1", [locked]);
     await pool.query("UPDATE team_state SET locked = $1 WHERE id = 1", [locked]);
+  }
+
+  if (paused !== undefined) {
+    if (typeof paused !== "boolean") {
+      return NextResponse.json({ error: "paused must be a boolean." }, { status: 400 });
+    }
+    // Player Picks only — Team Survival carries on regardless.
+    await pool.query("UPDATE game_state SET paused = $1 WHERE id = 1", [paused]);
   }
 
   if (scottishHidden !== undefined) {
